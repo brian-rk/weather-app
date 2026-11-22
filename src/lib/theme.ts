@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 
 /**
  * system: follow the OS setting.
@@ -34,7 +34,8 @@ export function useTheme(setting: ThemeSetting, isDayAtPlace: boolean | null) {
     (setting === 'system' && systemDark) ||
     (setting === 'sun' && (isDayAtPlace === null ? systemDark : !isDayAtPlace))
 
-  useEffect(() => {
+  // Layout effect so the theme lands inside a View Transition snapshot.
+  useLayoutEffect(() => {
     const root = document.documentElement
     root.dataset.theme = dark ? 'dark' : 'light'
     root.style.colorScheme = dark ? 'dark' : 'light'

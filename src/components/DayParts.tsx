@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Thermometer, Umbrella, Wind } from '@phosphor-icons/react'
 import { SkyIcon } from './SkyIcon'
-import { describe, hourIndex, round, type Forecast, type Units } from '../lib/weather'
+import { describe, hourIndex, round, weekday, type Forecast, type Units } from '../lib/weather'
+import { usePrefs, WIND_LABEL } from '../lib/prefs'
 
 type Metric = 'temp' | 'wind' | 'rain'
 
@@ -13,12 +14,14 @@ const PARTS = [
 ] as const
 
 const METRICS: { id: Metric; label: string; icon: typeof Thermometer; question: string }[] = [
-  { id: 'temp', label: 'Temperature', icon: Thermometer, question: 'How warm is it today?' },
-  { id: 'wind', label: 'Wind', icon: Wind, question: 'How windy is it today?' },
-  { id: 'rain', label: 'Rain chance', icon: Umbrella, question: 'Will it rain today?' },
+  { id: 'temp', label: 'Temperature', icon: Thermometer, question: 'How is the temperature {day}?' },
+  { id: 'wind', label: 'Wind', icon: Wind, question: 'How windy is it {day}?' },
+  { id: 'rain', label: 'Rain chance', icon: Umbrella, question: 'Will it rain {day}?' },
 ]
 
-export function DayParts({ forecast, units }: { forecast: Forecast; units: Units }) {
+export function DayParts({ forecast }: { forecast: Forecast; units: Units }) {
+  const prefs = usePrefs()
+  const future = (forecast.view?.day ?? 0) > 0
   const [metric, setMetric] = useState<Metric>('temp')
   const today = forecast.current.time.slice(0, 10)
   const nowHour = Number(forecast.current.time.slice(11, 13))
@@ -34,7 +37,7 @@ export function DayParts({ forecast, units }: { forecast: Forecast; units: Units
       value,
       sky: i < 0 ? 'cloudy' : describe(h.code[i]).sky,
       isDay: i < 0 ? true : h.isDay[i] === 1,
-      now: (nowHour >= p.from && nowHour < p.to) || (p.label === 'Night' && nowHour < 5),
+      now: !future && ((nowHour >= p.from && nowHour < p.to) || (p.label === 'Night' && nowHour < 5)),
     }
   })
 
@@ -42,12 +45,12 @@ export function DayParts({ forecast, units }: { forecast: Forecast; units: Units
   const lo = Math.min(...values)
   const hi = Math.max(...values)
   const span = hi - lo || 1
-  const suffix = metric === 'temp' ? '°' : metric === 'wind' ? (units === 'metric' ? ' km/h' : ' mph') : '%'
+  const suffix = metric === 'temp' ? '°' : metric === 'wind' ? ` ${WIND_LABEL[prefs.wind]}` : '%'
 
   return (
     <section className="dayparts" aria-labelledby="dayparts-title">
       <header className="dayparts-head">
-        <h2 id="dayparts-title">{current.question}</h2>
+        <h2 id="dayparts-title">{current.question.replace('{day}', future ? `on ${weekday(today)}` : 'today')}</h2>
         <div className="metric-switch" role="radiogroup" aria-label="Metric">
           {METRICS.map((m) => {
             const Icon = m.icon

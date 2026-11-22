@@ -2,10 +2,18 @@ import { Drop } from '@phosphor-icons/react'
 import { SkyIcon } from './SkyIcon'
 import { describe, round, weekday, type Forecast } from '../lib/weather'
 
-export function WeekCard({ forecast }: { forecast: Forecast }) {
+export function WeekCard({
+  forecast,
+  selected = 0,
+  onSelect,
+}: {
+  forecast: Forecast
+  selected?: number
+  onSelect?: (day: number) => void
+}) {
   const d = forecast.daily
-  const lo = Math.min(...d.min)
-  const hi = Math.max(...d.max)
+  const lo = Math.min(...d.min.slice(0, 7))
+  const hi = Math.max(...d.max.slice(0, 7))
   const span = hi - lo || 1
   const pct = (t: number) => ((t - lo) / span) * 100
   const now = forecast.current.temperature
@@ -16,12 +24,20 @@ export function WeekCard({ forecast }: { forecast: Forecast }) {
         <h2 id="week-title">7-day forecast</h2>
       </header>
       {/* Keyed on the data so the bars grow in again for a new place. */}
-      <ol className="week-list" key={d.max.join(',')}>
-        {d.time.map((date, i) => {
+      <ol className="week-list" key={d.max.slice(0, 7).join(',')}>
+        {d.time.slice(0, 7).map((date, i) => {
           const cond = describe(d.code[i])
           const rain = d.precipitation[i] ?? 0
           return (
-            <li key={date} className="week-row">
+            <li key={date} className={i === selected ? 'week-row is-selected' : 'week-row'}>
+              <button
+                type="button"
+                className="week-hit"
+                onClick={() => onSelect?.(i === selected ? 0 : i)}
+                aria-pressed={i === selected}
+              >
+                <span className="sr-only">Show {i === 0 ? 'today' : weekday(date)} on the dashboard</span>
+              </button>
               <span className="week-day">{i === 0 ? 'Today' : weekday(date, 'short')}</span>
               <span className="week-icon" title={cond.label}>
                 <SkyIcon sky={cond.sky} isDay size={22} weight="duotone" />

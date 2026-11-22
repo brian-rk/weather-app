@@ -12,6 +12,13 @@ All data is live, and the app needs **no API keys or accounts**.
 - **Saved cities:** save any city with the star on its weather card. Open the Saved panel from the sidebar to see live temperatures, open a city, reorder (drag, or use the arrow buttons), or remove it. Your first two saved cities appear on the dashboard for quick comparison.
 - **Shareable links:** the address bar always holds the current city (and °F if chosen), so a bookmark or shared link reopens the same forecast. The share button copies the link, or opens the share sheet on phones.
 - **Weather anywhere on the map:** click any spot to preview its weather and place name, then open its full forecast.
+- **Forecast calendar:** 16 days laid out as a calendar. Pick a day (or a row in the 7-day list) and the whole dashboard shows that day.
+- **Daily briefing:** a chat-style summary of the day in plain language: rain timing, highs and lows, gusts, UV, air quality and the best time for an activity.
+- **Weather alerts:** the bell flags thunderstorms, heavy rain, snow, strong gusts, heat, frost, very high UV and unhealthy air for the next two days, with an unread count and optional browser notifications.
+- **Plan your day:** the best time windows for a run, cycling, walking the dog, drying laundry, a barbecue and stargazing, scored from rain, wind, UV, temperature and cloud.
+- **Settings:** your name and avatar (photo or initials), units for temperature, wind and pressure, 12- or 24-hour time, start-up city, refresh interval, theme, and which alerts you get.
+- **Expandable sidebar:** switch between a slim icon rail and a wider sidebar with labels.
+- **Tomorrow scene:** a traveller on a bench dressed for tomorrow's weather: umbrella for rain, sunglasses for sun, beanie and scarf for cold.
 - **Light and dark themes:** follow your device, stay light or dark, or switch to dark after sunset in the selected city. The map recolours too.
 - **Always fresh:** "Updated 5 min ago" shows how old the data is. The forecast refreshes every 15 minutes, and again when you come back to the tab after a while.
 - **Air quality:** the current US Air Quality Index with a plain-language label and a meter.
@@ -25,7 +32,8 @@ All data is live, and the app needs **no API keys or accounts**.
 - **Wind:** speed, direction on a compass, and gusts.
 - **Pressure:** current pressure, whether it's rising or falling over the next 3 hours, and what that usually means.
 - **Air quality detail:** PM2.5, PM10, ozone and nitrogen dioxide, plus pollen levels where they're available (Europe).
-- **Weather animations:** rain and drizzle fall, storms flash, snow drifts, sun rays turn, clouds and fog move, and gusts sweep across the card when it's windy. Temperatures count up, the 24-hour line draws itself and the week's bars grow in. All motion switches off when the system asks for reduced motion.
+- **Weather animations:** rain and drizzle fall, storms flash, snow drifts, sun rays turn, clouds and fog move, and gusts sweep across the card when it's windy. The big temperature rolls like an odometer, the 24-hour line draws itself and the week's bars grow in.
+- **Transitions:** cards rise in on load and cross-fade through a soft blur when you change city or day, the sky colour blends between day, grey and night, the map morphs when expanded, a theme change spreads out in a circle from where you clicked, panels slide in, the bell swings for new alerts, and the illustration tilts toward your pointer. All motion switches off when the system asks for reduced motion.
 - **Celsius or Fahrenheit:** switching units also switches wind speed between km/h and mph.
 - **Use my location:** shows the forecast for where you are (needs browser permission).
 - **Remembers you:** your city, saved cities and units are kept in the browser between visits.
@@ -107,14 +115,22 @@ weather/
     │   ├── Conditions.tsx  # Sun, UV index, wind and pressure
     │   ├── MapCard.tsx     # MapLibre map, markers and map controls
     │   ├── useRadar.ts     # RainViewer radar layers and playback
+    │   ├── Header.tsx      # Avatar greeting, search, calendar, briefing and alert buttons
+    │   ├── Sheet.tsx       # Shared side/bottom sheet for every panel
     │   ├── SavedPanel.tsx  # Saved cities: open, reorder, remove
-    │   ├── ThemeMenu.tsx   # Appearance: system, light, dark, day and night
+    │   ├── CalendarPanel.tsx, BriefingPanel.tsx, AlertsPanel.tsx, PlannerPanel.tsx, SettingsPanel.tsx
+    │   ├── TomorrowScene.tsx # Illustrated traveller dressed for tomorrow
+    │   ├── Odometer.tsx    # Rolling-digit temperature
+    │   ├── Avatar.tsx      # Photo or initials avatar
     │   ├── usePopover.ts   # Escape, outside click and focus handling for panels
     │   ├── SkyFx.tsx       # Card-wide rain, snow, lightning and wind effects
     │   ├── WeatherArt.tsx  # Hand-built SVG weather illustrations
     │   └── SkyIcon.tsx     # Small icons for each type of weather
     └── lib/
         ├── weather.ts      # API calls, types, weather codes and formatting
+        ├── insights.ts     # Alerts, daily briefing and activity planner
+        ├── prefs.ts        # Settings, unit conversion and formatting
+        ├── theme.ts        # Theme resolution (system, light, dark, day and night)
         └── mapStyle.ts     # Custom map style (colours, layers, labels)
 ```
 

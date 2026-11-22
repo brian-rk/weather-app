@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { SkyIcon } from './SkyIcon'
 import { describe, nowIndex, round, type Forecast, type Units } from '../lib/weather'
+import { formatHour, usePrefs } from '../lib/prefs'
 
 const HOURS = 25 // now + next 24
 const HEIGHT = 210
@@ -45,7 +46,10 @@ export function HourlyChart({ forecast, units }: { forecast: Forecast; units: Un
   const [wrapRef, width] = useWidth<HTMLDivElement>()
   const [active, setActive] = useState<number | null>(null)
 
-  const start = nowIndex(forecast)
+  const prefs = usePrefs()
+  const future = (forecast.view?.day ?? 0) > 0
+  const day6 = forecast.hourly.time.indexOf(`${forecast.current.time.slice(0, 10)}T06:00`)
+  const start = future && day6 >= 0 ? day6 : nowIndex(forecast)
   const h = forecast.hourly
   const hours = Array.from({ length: HOURS }, (_, k) => start + k)
     .filter((i) => i < h.time.length)
@@ -94,7 +98,7 @@ export function HourlyChart({ forecast, units }: { forecast: Forecast; units: Un
   return (
     <section className="hourly" aria-labelledby="hourly-title">
       <header className="section-head">
-        <h2 id="hourly-title">Next 24 hours</h2>
+        <h2 id="hourly-title">{future ? 'Through the day' : 'Next 24 hours'}</h2>
         <ul className="legend" aria-hidden="true">
           <li>
             <span className="legend-line" /> Temperature
@@ -166,7 +170,7 @@ export function HourlyChart({ forecast, units }: { forecast: Forecast; units: Un
           {marks.map((p) => (
             <li key={p.time} style={{ left: x(p.k) }}>
               <SkyIcon sky={p.sky} isDay={p.isDay} size={18} weight="duotone" />
-              <span>{p.k === 0 ? 'Now' : p.time.slice(11, 16)}</span>
+              <span>{p.k === 0 && !future ? 'Now' : formatHour(p.time, prefs.clock)}</span>
             </li>
           ))}
         </ol>
@@ -177,7 +181,7 @@ export function HourlyChart({ forecast, units }: { forecast: Forecast; units: Un
             style={{ left: Math.min(Math.max(x(sel.k), 70), width - 70) }}
             role="status"
           >
-            <strong>{sel.k === 0 ? 'Now' : sel.time.slice(11, 16)}</strong>
+            <strong>{sel.k === 0 && !future ? 'Now' : formatHour(sel.time, prefs.clock)}</strong>
             <span>
               {round(sel.temp)}°{unit} · {sel.label}
             </span>

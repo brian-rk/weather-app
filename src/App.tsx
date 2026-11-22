@@ -1,24 +1,32 @@
-import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
-import { ShareNetwork } from '@phosphor-icons/react'
-import { Sidebar } from './components/Sidebar'
-import { Search } from './components/Search'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { Sidebar, type NavId } from './components/Sidebar'
+import { Header } from './components/Header'
 import { DayParts } from './components/DayParts'
 import { HourlyChart } from './components/HourlyChart'
 import { WeekCard } from './components/WeekCard'
 import { Conditions } from './components/Conditions'
 import { SavedPanel, MAX_SAVED } from './components/SavedPanel'
-import { ThemeMenu } from './components/ThemeMenu'
+import { BriefingPanel } from './components/BriefingPanel'
+import { CalendarPanel } from './components/CalendarPanel'
+import { AlertsPanel } from './components/AlertsPanel'
+import { PlannerPanel } from './components/PlannerPanel'
+import { SettingsPanel } from './components/SettingsPanel'
 import { AirCard, CityList, ErrorCard, NowCard, TomorrowCard } from './components/Cards'
 import { useTheme, type ThemeSetting } from './lib/theme'
+import { DEFAULT_PREFS, PrefsContext, unitsOf, type Prefs } from './lib/prefs'
+import { briefing, computeAlerts, planDay } from './lib/insights'
 import {
   DEFAULT_PLACE,
   DEFAULT_SAVED,
   fetchAirQuality,
   fetchForecast,
   fetchSnapshots,
+  forecastForDay,
   placeFromSearch,
   placeToSearch,
   reverseGeocode,
+  shortDate,
   timeAgo,
   type AirQuality,
   type Forecast,
@@ -30,18 +38,26 @@ import {
 // MapLibre is the heaviest dependency; keep it out of the first paint.
 const MapCard = lazy(() => import('./components/MapCard').then((m) => ({ default: m.MapCard })))
 
-const AUTO_REFRESH_MS = 15 * 60 * 1000
 const STALE_ON_RETURN_MS = 10 * 60 * 1000
 
-function usePersisted<T>(key: string, initial: T, override?: T | null) {
+type PanelId = 'briefing' | 'calendar' | 'alerts' | 'planner' | 'saved' | 'settings'
+type Panel = { id: PanelId; side: 'left' | 'right' } | null
+
+function readStored<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : null
+  } catch {
+    return null
+  }
+}
+
+function usePersisted<T>(key: string, initial: T | (() => T), override?: T | null) {
   const [value, setValue] = useState<T>(() => {
     if (override != null) return override
-    try {
-      const raw = localStorage.getItem(key)
-      return raw ? (JSON.parse(raw) as T) : initial
-    } catch {
-      return initial
-    }
+    const stored = readStored<T>(key)
+    if (stored != null) return stored
+    return typeof initial === 'function' ? (initial as () => T)() : initial
   })
   useEffect(() => {
     try {
@@ -53,7 +69,7 @@ function usePersisted<T>(key: string, initial: T, override?: T | null) {
   return [value, setValue] as const
 }
 
-function greeting(d = new Date()) {
+function greetingFor(d = new Date()) {
   const h = d.getHours()
   if (h < 5) return 'Good night'
   if (h < 12) return 'Good morning'
@@ -61,18 +77,46 @@ function greeting(d = new Date()) {
   return 'Good evening'
 }
 
-/** Data tagged with the place + units it was loaded for, so stale data never shows under a new city. */
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/** Run a state change inside a View Transition when the browser supports it. */
+function transition(update: () => void) {
+  if (!document.startViewTransition || reducedMotion()) {
+    update()
+    return
+  }
+  document.startViewTransition(() => flushSync(update))
+}
+
+/** Tagged with the place + units it was loaded for, so stale data never shows under a new city. */
 type Tagged<T> = { key: string; data: T }
 
 export default function App() {
-  // A shared link (?city=…&lat=…&lon=…) wins over whatever was stored.
   const [fromUrl] = useState(() => placeFromSearch(window.location.search))
-  const [place, setPlace] = usePersisted<Place>('nimbus.place', DEFAULT_PLACE, fromUrl.place)
-  const [saved, setSaved] = usePersisted<Place[]>('nimbus.saved', DEFAULT_SAVED)
-  const [units, setUnits] = usePersisted<Units>('nimbus.units', 'metric', fromUrl.units)
-  const [themeSetting, setThemeSetting] = usePersisted<ThemeSetting>('nimbus.theme', 'system')
 
-  const key = `${place.id}|${units}`
+  // Preferences, migrating the earlier standalone units setting.
+  const [rawPrefs, setPrefs] = usePersisted<Prefs>('nimbus.prefs', () => ({
+    ...DEFAULT_PREFS,
+    temp: readStored<Units>('nimbus.units') === 'imperial' ? 'f' : 'c',
+  }))
+  const prefs = useMemo<Prefs>(
+    () => ({ ...DEFAULT_PREFS, ...rawPrefs, alerts: { ...DEFAULT_PREFS.alerts, ...rawPrefs.alerts } }),
+    [rawPrefs],
+  )
+  useEffect(() => {
+    if (fromUrl.units) setPrefs((p) => ({ ...p, temp: fromUrl.units === 'imperial' ? 'f' : 'c' }))
+  }, [fromUrl, setPrefs])
+  const units = unitsOf(prefs)
+
+  const startPlace = fromUrl.place ?? (prefs.startWith === 'home' ? prefs.home : null)
+  const [place, setPlace] = usePersisted<Place>('nimbus.place', DEFAULT_PLACE, startPlace)
+  const [saved, setSaved] = usePersisted<Place[]>('nimbus.saved', DEFAULT_SAVED)
+  const [themeSetting, setThemeSetting] = usePersisted<ThemeSetting>('nimbus.theme', 'system')
+  const [sidebarOpen, setSidebarOpen] = usePersisted<boolean>('nimbus.sidebar', false)
+  const [seenAlerts, setSeenAlerts] = usePersisted<string[]>('nimbus.seenAlerts', [])
+  const [notified, setNotified] = usePersisted<string[]>('nimbus.notifiedAlerts', [])
+
+  const key = `${place.id}|${units}|${prefs.wind}`
   const [forecastState, setForecastState] = useState<Tagged<Forecast> | null>(null)
   const [airState, setAirState] = useState<Tagged<AirQuality | null> | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -84,24 +128,35 @@ export default function App() {
   const [mapExpanded, setMapExpanded] = useState(false)
   const [locating, setLocating] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
-  const [savedOpen, setSavedOpen] = useState(false)
-  const [themeOpen, setThemeOpen] = useState(false)
-  const savedBtn = useRef<HTMLButtonElement>(null)
-  const themeBtn = useRef<HTMLButtonElement>(null)
+  const [panel, setPanel] = useState<Panel>(null)
+  const [day, setDay] = useState(0)
+  const [bellRing, setBellRing] = useState(0)
+  const [greeting] = useState(greetingFor)
+  const contentRef = useRef<HTMLElement>(null)
 
-  // Only show data that belongs to the current place and units.
-  const forecast = forecastState?.key === key ? forecastState.data : null
+  const base = forecastState?.key === key ? forecastState.data : null
+  const forecast = useMemo(() => (base ? forecastForDay(base, day) : null), [base, day])
   const air = airState?.key === key ? airState.data : undefined
   const isSaved = saved.some((p) => p.id === place.id)
   const others = saved.filter((p) => p.id !== place.id).slice(0, 2)
-  const dark = useTheme(themeSetting, forecast ? forecast.current.isDay : null)
+  const dark = useTheme(themeSetting, base ? base.current.isDay : null)
+
+  // Insights from the forecast.
+  const alerts = useMemo(() => (base ? computeAlerts(base, air, units, prefs) : []), [base, air, units, prefs])
+  const plans = useMemo(() => (forecast ? planDay(forecast, units, prefs) : []), [forecast, units, prefs])
+  const todaysPlans = useMemo(() => (base ? planDay(forecastForDay(base, 0), units, prefs) : []), [base, units, prefs])
+  const lines = useMemo(
+    () => (base ? briefing(base, air, place, prefs, alerts, todaysPlans) : []),
+    [base, air, place, prefs, alerts, todaysPlans],
+  )
+  const unread = useMemo(() => new Set(alerts.filter((a) => !seenAlerts.includes(a.id)).map((a) => a.id)), [alerts, seenAlerts])
 
   // Main forecast + air quality. Refreshes keep the old data on screen.
   useEffect(() => {
     const ctrl = new AbortController()
     setLoading(true)
     setError(null)
-    fetchForecast(place, units, ctrl.signal)
+    fetchForecast(place, units, ctrl.signal, prefs.wind)
       .then((data) => {
         setForecastState({ key, data })
         setUpdatedAt(Date.now())
@@ -118,7 +173,7 @@ export default function App() {
         if (e.name !== 'AbortError') setAirState({ key, data: null })
       })
     return () => ctrl.abort()
-  }, [place, units, nonce, key])
+  }, [place, units, prefs.wind, nonce, key])
 
   // Snapshots for the comparison cities.
   const othersKey = others.map((p) => p.id).join('|')
@@ -131,25 +186,41 @@ export default function App() {
     // `others` is derived from othersKey; listing it would refetch every render.
   }, [othersKey, units, nonce]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep "Updated … ago" current, refresh every 15 minutes, and catch up
-  // when the tab comes back after a while.
+  // "Updated … ago", the chosen auto-refresh interval, and catching up after a break.
   useEffect(() => {
     const tick = window.setInterval(() => setNow(Date.now()), 30_000)
-    const auto = window.setInterval(() => setNonce((n) => n + 1), AUTO_REFRESH_MS)
-    return () => {
-      window.clearInterval(tick)
-      window.clearInterval(auto)
-    }
+    return () => window.clearInterval(tick)
   }, [])
+  useEffect(() => {
+    if (!prefs.refreshMin) return
+    const auto = window.setInterval(() => setNonce((n) => n + 1), prefs.refreshMin * 60_000)
+    return () => window.clearInterval(auto)
+  }, [prefs.refreshMin])
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
       setNow(Date.now())
-      if (updatedAt && Date.now() - updatedAt > STALE_ON_RETURN_MS) setNonce((n) => n + 1)
+      if (prefs.refreshMin && updatedAt && Date.now() - updatedAt > STALE_ON_RETURN_MS) setNonce((n) => n + 1)
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [updatedAt])
+  }, [updatedAt, prefs.refreshMin])
+
+  // Ring the bell when the number of unread alerts goes up.
+  const lastUnread = useRef(0)
+  useEffect(() => {
+    if (unread.size > lastUnread.current) setBellRing((n) => n + 1)
+    lastUnread.current = unread.size
+  }, [unread])
+
+  // Browser notifications for alerts not announced before.
+  useEffect(() => {
+    if (!prefs.notify || !('Notification' in window) || Notification.permission !== 'granted') return
+    const fresh = alerts.filter((a) => !notified.includes(a.id))
+    if (fresh.length === 0) return
+    for (const a of fresh) new Notification(`${a.title} · ${place.name}`, { body: a.body, tag: a.id })
+    setNotified((list) => [...list, ...fresh.map((a) => a.id)].slice(-100))
+  }, [alerts, prefs.notify, notified, setNotified, place.name])
 
   // Mirror the current place in the address bar so it can be bookmarked or shared.
   useEffect(() => {
@@ -163,7 +234,57 @@ export default function App() {
     return () => window.clearTimeout(t)
   }, [notice])
 
-  const select = useCallback((next: Place) => setPlace(next), [setPlace])
+  // A new city always starts on today.
+  const select = useCallback(
+    (next: Place) => {
+      setPlace(next)
+      setDay(0)
+    },
+    [setPlace],
+  )
+
+  const openPanel = (id: PanelId, side: 'left' | 'right') => {
+    setPanel((p) => {
+      if (p?.id === id) return null
+      return { id, side }
+    })
+  }
+  const closePanel = useCallback(() => {
+    setPanel((p) => {
+      // Opening the alerts counts as reading them.
+      if (p?.id === 'alerts') setSeenAlerts((s) => [...new Set([...s, ...alerts.map((a) => a.id)])].slice(-200))
+      return null
+    })
+  }, [alerts, setSeenAlerts])
+
+  const toggleMap = () => transition(() => setMapExpanded((v) => !v))
+
+  const onNav = (id: NavId) => {
+    if (id === 'dashboard') {
+      setPanel(null)
+      if (mapExpanded) toggleMap()
+      contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+    if (id === 'map') {
+      setPanel(null)
+      toggleMap()
+      return
+    }
+    openPanel(id, 'left')
+  }
+
+  const setTheme = (t: ThemeSetting, origin?: { x: number; y: number }) => {
+    const root = document.documentElement
+    if (origin) {
+      root.style.setProperty('--vt-x', `${origin.x}px`)
+      root.style.setProperty('--vt-y', `${origin.y}px`)
+    }
+    root.classList.add('theme-transition')
+    transition(() => setThemeSetting(t))
+    window.setTimeout(() => root.classList.remove('theme-transition'), 700)
+  }
 
   const toggleSave = () => {
     if (isSaved) {
@@ -188,7 +309,7 @@ export default function App() {
       await navigator.clipboard.writeText(url)
       setNotice(`Link to ${place.name} copied.`)
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return // share sheet dismissed
+      if ((e as Error).name === 'AbortError') return
       setNotice(`Couldn't copy automatically. The address bar has the link to ${place.name}.`)
     }
   }
@@ -205,12 +326,12 @@ export default function App() {
         const spot = await reverseGeocode(latitude, longitude).catch(() => null)
         setLocating(false)
         select({
-          ...(spot ?? { region: '' }),
           id: `geo-${latitude.toFixed(2)},${longitude.toFixed(2)}`,
           name: spot?.name ?? 'Your location',
+          region: spot?.region ?? '',
           latitude,
           longitude,
-        } as Place)
+        })
       },
       () => {
         setLocating(false)
@@ -220,147 +341,195 @@ export default function App() {
     )
   }
 
-  const [today] = useState(() => new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' }))
-  const [hello] = useState(greeting)
-  const status = loading ? (forecast ? 'Updating' : 'Loading') : updatedAt ? `Updated ${timeAgo(now - updatedAt)}` : ''
+  const status = loading ? (base ? 'Updating' : 'Loading') : updatedAt ? `Updated ${timeAgo(now - updatedAt)}` : ''
+  const active: NavId =
+    panel && panel.side === 'left' && panel.id !== 'alerts' ? (panel.id as NavId) : mapExpanded ? 'map' : 'dashboard'
+  const viewKey = `${key}|${day}`
+  const dayLabel = day === 0 || !forecast ? 'the rest of today' : shortDate(forecast.current.time.slice(0, 10))
 
   return (
-    <div className="shell">
-      <Sidebar
-        mapExpanded={mapExpanded}
-        onToggleMap={() => setMapExpanded((v) => !v)}
-        onLocate={locate}
-        locating={locating}
-        onRefresh={() => setNonce((n) => n + 1)}
-        refreshing={loading}
-        savedOpen={savedOpen}
-        onToggleSaved={() => {
-          setThemeOpen(false)
-          setSavedOpen((v) => !v)
-        }}
-        savedRef={savedBtn}
-        themeOpen={themeOpen}
-        onToggleTheme={() => {
-          setSavedOpen(false)
-          setThemeOpen((v) => !v)
-        }}
-        themeRef={themeBtn}
-      />
+    <PrefsContext.Provider value={prefs}>
+      <div className={`shell ${sidebarOpen ? 'has-wide-rail' : ''}`}>
+        <Sidebar
+          active={active}
+          onNav={onNav}
+          expanded={sidebarOpen}
+          onToggleExpanded={() => setSidebarOpen((v) => !v)}
+          onRefresh={() => setNonce((n) => n + 1)}
+          refreshing={loading}
+        />
 
-      <SavedPanel
-        open={savedOpen}
-        onClose={() => setSavedOpen(false)}
-        trigger={savedBtn}
-        saved={saved}
-        current={place}
-        units={units}
-        onOpenPlace={select}
-        onChange={setSaved}
-      />
-      <ThemeMenu
-        open={themeOpen}
-        onClose={() => setThemeOpen(false)}
-        trigger={themeBtn}
-        value={themeSetting}
-        onChange={setThemeSetting}
-      />
+        <SavedPanel
+          open={panel?.id === 'saved'}
+          side={panel?.side}
+          onClose={closePanel}
+          saved={saved}
+          current={place}
+          units={units}
+          onOpenPlace={select}
+          onChange={setSaved}
+        />
+        <BriefingPanel open={panel?.id === 'briefing'} side={panel?.side} onClose={closePanel} lines={lines} placeName={place.name} />
+        <CalendarPanel
+          open={panel?.id === 'calendar'}
+          side={panel?.side}
+          onClose={closePanel}
+          forecast={base}
+          selected={day}
+          onSelect={(d) => transition(() => setDay(d))}
+        />
+        <AlertsPanel
+          open={panel?.id === 'alerts'}
+          side={panel?.side}
+          onClose={closePanel}
+          alerts={alerts}
+          unread={unread}
+          onMarkAllRead={() => setSeenAlerts((s) => [...new Set([...s, ...alerts.map((a) => a.id)])])}
+          onOpenSettings={() => setPanel({ id: 'settings', side: panel?.side ?? 'right' })}
+        />
+        <PlannerPanel open={panel?.id === 'planner'} side={panel?.side} onClose={closePanel} plans={plans} dayLabel={dayLabel} />
+        <SettingsPanel
+          open={panel?.id === 'settings'}
+          side={panel?.side}
+          onClose={closePanel}
+          prefs={prefs}
+          onChange={setPrefs}
+          theme={themeSetting}
+          onTheme={setTheme}
+          current={place}
+        />
 
-      <main className="main">
-        <header className="topbar">
-          <div className="hello">
-            <p className="muted">
-              {hello}
-              {status && (
-                <span className="status" aria-live="polite">
-                  {' '}
-                  · {status}
-                </span>
-              )}
+        <main className="main" ref={contentRef}>
+          <Header
+            prefs={prefs}
+            greeting={greeting}
+            status={status}
+            onSelect={select}
+            onLocate={locate}
+            locating={locating}
+            units={units}
+            onUnits={(u) => setPrefs((p) => ({ ...p, temp: u === 'imperial' ? 'f' : 'c' }))}
+            unreadAlerts={unread.size}
+            bellRing={bellRing}
+            open={panel?.side === 'right' ? panel.id : null}
+            onOpen={(id) => openPanel(id, 'right')}
+          />
+
+          {notice && (
+            <p className="notice" role="status">
+              {notice}
             </p>
-            <h1>{today}</h1>
-          </div>
-          <Search onSelect={select} />
-          <div className="topbar-actions">
-            <button type="button" className="icon-btn icon-btn--soft" onClick={share} title="Share this forecast">
-              <ShareNetwork size={18} />
-              <span className="sr-only">Share the forecast for {place.name}</span>
-            </button>
-            <div className="units" role="radiogroup" aria-label="Units">
-              {(['metric', 'imperial'] as const).map((u) => (
-                <button key={u} type="button" role="radio" aria-checked={units === u} onClick={() => setUnits(u)}>
-                  °{u === 'metric' ? 'C' : 'F'}
-                </button>
-              ))}
+          )}
+          {day > 0 && forecast && (
+            <p className="day-banner" role="status">
+              <span>
+                Viewing <strong>{shortDate(forecast.current.time.slice(0, 10))}</strong>
+              </span>
+              <button type="button" className="btn-ghost btn-ghost--small" onClick={() => transition(() => setDay(0))}>
+                Back to today
+              </button>
+            </p>
+          )}
+
+          <div className={`grid ${mapExpanded ? 'grid--map' : ''}`} aria-busy={loading}>
+            <div className="area-now">
+              {error && !forecast ? (
+                <ErrorCard message={error} onRetry={() => setNonce((n) => n + 1)} />
+              ) : forecast ? (
+                <div className="swap" key={viewKey}>
+                  <NowCard
+                    place={place}
+                    forecast={forecast}
+                    units={units}
+                    saved={isSaved}
+                    onToggleSave={toggleSave}
+                    onShare={share}
+                  />
+                </div>
+              ) : (
+                <div className="card skeleton skeleton-card" />
+              )}
+            </div>
+
+            <div className="area-map">
+              <Suspense fallback={<div className="card skeleton skeleton-card" />}>
+                <MapCard
+                  place={place}
+                  forecast={forecast}
+                  units={units}
+                  expanded={mapExpanded}
+                  onToggleExpanded={toggleMap}
+                  onPick={select}
+                  dark={dark}
+                />
+              </Suspense>
+            </div>
+
+            <div className="area-side">
+              <CityList places={others} snapshots={snaps} units={units} onSelect={select} />
+              <AirCard
+                air={air}
+                isDay={forecast?.current.isDay ?? true}
+                sky={forecast?.current.code ?? 2}
+                humidity={forecast?.current.humidity ?? null}
+              />
+            </div>
+
+            <div className="area-day">
+              {forecast ? (
+                <div className="swap" key={viewKey}>
+                  <DayParts forecast={forecast} units={units} />
+                </div>
+              ) : (
+                <div className="skeleton skeleton-card" />
+              )}
+            </div>
+
+            <div className="area-tomorrow">
+              {forecast ? (
+                <div className="swap" key={viewKey}>
+                  <TomorrowCard place={place} forecast={forecast} units={units} />
+                </div>
+              ) : (
+                <div className="card skeleton skeleton-card" />
+              )}
+            </div>
+
+            <div className="area-hourly">
+              {forecast ? (
+                <div className="swap" key={viewKey}>
+                  <HourlyChart forecast={forecast} units={units} />
+                </div>
+              ) : (
+                <div className="skeleton skeleton-card" />
+              )}
+            </div>
+
+            <div className="area-week">
+              {base ? (
+                <WeekCard forecast={forecastForDay(base, 0)} selected={day} onSelect={(d) => transition(() => setDay(d))} />
+              ) : (
+                <div className="skeleton skeleton-card" />
+              )}
+            </div>
+
+            <div className="area-cond">
+              {forecast ? (
+                <div className="swap" key={viewKey}>
+                  <Conditions forecast={forecast} units={units} />
+                </div>
+              ) : (
+                <div className="skeleton skeleton-card" />
+              )}
             </div>
           </div>
-        </header>
 
-        {notice && (
-          <p className="notice" role="status">
-            {notice}
-          </p>
-        )}
-
-        <div className={`grid ${mapExpanded ? 'grid--map' : ''}`} aria-busy={loading}>
-          <div className="area-now">
-            {error && !forecast ? (
-              <ErrorCard message={error} onRetry={() => setNonce((n) => n + 1)} />
-            ) : forecast ? (
-              <NowCard place={place} forecast={forecast} units={units} saved={isSaved} onToggleSave={toggleSave} />
-            ) : (
-              <div className="card skeleton skeleton-card" />
-            )}
-          </div>
-
-          <div className="area-map">
-            <Suspense fallback={<div className="card skeleton skeleton-card" />}>
-              <MapCard
-                place={place}
-                forecast={forecast}
-                units={units}
-                expanded={mapExpanded}
-                onToggleExpanded={() => setMapExpanded((v) => !v)}
-                onPick={select}
-                dark={dark}
-              />
-            </Suspense>
-          </div>
-
-          <div className="area-side">
-            <CityList places={others} snapshots={snaps} units={units} onSelect={select} />
-            <AirCard air={air} isDay={forecast?.current.isDay ?? true} sky={forecast?.current.code ?? 2} />
-          </div>
-
-          <div className="area-day">
-            {forecast ? <DayParts forecast={forecast} units={units} /> : <div className="skeleton skeleton-card" />}
-          </div>
-
-          <div className="area-tomorrow">
-            {forecast ? (
-              <TomorrowCard place={place} forecast={forecast} units={units} />
-            ) : (
-              <div className="card skeleton skeleton-card" />
-            )}
-          </div>
-
-          <div className="area-hourly">
-            {forecast ? <HourlyChart forecast={forecast} units={units} /> : <div className="skeleton skeleton-card" />}
-          </div>
-
-          <div className="area-week">
-            {forecast ? <WeekCard forecast={forecast} /> : <div className="skeleton skeleton-card" />}
-          </div>
-
-          <div className="area-cond">
-            {forecast ? <Conditions forecast={forecast} units={units} /> : <div className="skeleton skeleton-card" />}
-          </div>
-        </div>
-
-        <footer className="credit">
-          Forecast data by <a href="https://open-meteo.com/">Open-Meteo</a>
-          {error && forecast && <span> · Last refresh failed, showing earlier data</span>}
-        </footer>
-      </main>
-    </div>
+          <footer className="credit">
+            Forecast data by <a href="https://open-meteo.com/">Open-Meteo</a>
+            {error && base && <span> · Last refresh failed, showing earlier data</span>}
+          </footer>
+        </main>
+      </div>
+    </PrefsContext.Provider>
   )
 }

@@ -1,7 +1,7 @@
-import { useEffect, useId, useState, type RefObject } from 'react'
-import { CaretDown, CaretUp, DotsSixVertical, Star, Trash, X } from '@phosphor-icons/react'
+import { useEffect, useState } from 'react'
+import { CaretDown, CaretUp, DotsSixVertical, Star, Trash } from '@phosphor-icons/react'
 import { SkyIcon } from './SkyIcon'
-import { usePopover } from './usePopover'
+import { Sheet } from './Sheet'
 import { describe, fetchSnapshots, round, type Place, type Snapshot, type Units } from '../lib/weather'
 
 export const MAX_SAVED = 12
@@ -9,7 +9,7 @@ export const MAX_SAVED = 12
 type Props = {
   open: boolean
   onClose: () => void
-  trigger: RefObject<HTMLElement | null>
+  side?: 'left' | 'right'
   saved: Place[]
   current: Place
   units: Units
@@ -17,9 +17,7 @@ type Props = {
   onChange: (next: Place[]) => void
 }
 
-export function SavedPanel({ open, onClose, trigger, saved, current, units, onOpenPlace, onChange }: Props) {
-  const ref = usePopover<HTMLElement>(open, onClose, trigger)
-  const titleId = useId()
+export function SavedPanel({ open, onClose, side, saved, current, units, onOpenPlace, onChange }: Props) {
   const [snaps, setSnaps] = useState<Record<string, Snapshot>>({})
   const [dragging, setDragging] = useState<number | null>(null)
   const [over, setOver] = useState<number | null>(null)
@@ -49,14 +47,7 @@ export function SavedPanel({ open, onClose, trigger, saved, current, units, onOp
   }
 
   return (
-    <aside ref={ref} className="sheet" role="dialog" aria-modal="false" aria-labelledby={titleId}>
-      <header className="sheet-head">
-        <h2 id={titleId}>Saved cities</h2>
-        <button type="button" className="icon-btn" onClick={onClose}>
-          <X size={18} />
-          <span className="sr-only">Close saved cities</span>
-        </button>
-      </header>
+    <Sheet open={open} onClose={onClose} title="Saved cities" side={side}>
 
       {!isSaved && (
         <button
@@ -167,6 +158,6 @@ export function SavedPanel({ open, onClose, trigger, saved, current, units, onOp
           </ol>
         </>
       )}
-    </aside>
+    </Sheet>
   )
 }

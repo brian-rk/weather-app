@@ -1,10 +1,18 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { MagnifyingGlass, MapPin, X } from '@phosphor-icons/react'
+import { Crosshair, MagnifyingGlass, MapPin, X } from '@phosphor-icons/react'
 import { searchPlaces, type Place } from '../lib/weather'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
-export function Search({ onSelect }: { onSelect: (p: Place) => void }) {
+export function Search({
+  onSelect,
+  onLocate,
+  locating = false,
+}: {
+  onSelect: (p: Place) => void
+  onLocate?: () => void
+  locating?: boolean
+}) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Place[]>([])
   const [status, setStatus] = useState<Status>('idle')
@@ -124,6 +132,13 @@ export function Search({ onSelect }: { onSelect: (p: Place) => void }) {
         </span>
       )}
 
+      {onLocate && (
+        <button type="button" className="search-locate" onClick={onLocate} disabled={locating} title="Use my location">
+          <Crosshair size={17} className={locating ? 'spin' : undefined} />
+          <span className="sr-only">Use my location</span>
+        </button>
+      )}
+
       {showPanel && (
         <div className="search-panel" id={listId} role="listbox" aria-label="Matching places">
           {status === 'loading' && results.length === 0 && (
@@ -145,6 +160,7 @@ export function Search({ onSelect }: { onSelect: (p: Place) => void }) {
               role="option"
               aria-selected={i === active}
               className="search-option"
+              style={{ animationDelay: `${i * 40}ms` }}
               onPointerEnter={() => setActive(i)}
               onClick={() => pick(p)}
             >

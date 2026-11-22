@@ -1,9 +1,8 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from '@phosphor-icons/react'
+import { formatClock, formatPressureIn, toKmh, usePrefs, WIND_LABEL } from '../lib/prefs'
 import {
-  clock,
   compass,
   formatDuration,
-  formatPressure,
   minutesOfDay,
   nowIndex,
   round,
@@ -15,6 +14,8 @@ import {
 /* ---------------------------------------------------------------- Sun */
 
 function Sun({ forecast }: { forecast: Forecast }) {
+  const { clock: fmt } = usePrefs()
+  const clock = (iso: string) => formatClock(iso, fmt)
   const d = forecast.daily
   const rise = minutesOfDay(d.sunrise[0])
   const set = minutesOfDay(d.sunset[0])
@@ -69,6 +70,7 @@ function Sun({ forecast }: { forecast: Forecast }) {
 /* ----------------------------------------------------------------- UV */
 
 function Uv({ forecast }: { forecast: Forecast }) {
+  const { clock: fmt } = usePrefs()
   const uv = forecast.current.uv
   const peak = forecast.daily.uvMax[0]
   const level = uvLevel(uv)
@@ -78,7 +80,7 @@ function Uv({ forecast }: { forecast: Forecast }) {
     .filter((p) => p.time.startsWith(today) && p.uv >= 3)
   const protect =
     strong.length > 0
-      ? `Protect yourself ${clock(strong[0].time)} to ${String(Number(clock(strong.at(-1)!.time).slice(0, 2)) + 1).padStart(2, '0')}:00.`
+      ? `Protect yourself ${formatClock(strong[0].time, fmt)} to ${formatClock(`${strong.at(-1)!.time.slice(0, 11)}${String(Number(strong.at(-1)!.time.slice(11, 13)) + 1).padStart(2, '0')}:00`, fmt)}.`
       : null
 
   return (
@@ -100,9 +102,10 @@ function Uv({ forecast }: { forecast: Forecast }) {
 
 /* --------------------------------------------------------------- Wind */
 
-function Wind({ forecast, units }: { forecast: Forecast; units: Units }) {
+function Wind({ forecast }: { forecast: Forecast; units: Units }) {
+  const prefs = usePrefs()
   const c = forecast.current
-  const unit = units === 'metric' ? 'km/h' : 'mph'
+  const unit = WIND_LABEL[prefs.wind]
   return (
     <div className="cond">
       <h3>Wind</h3>
@@ -126,7 +129,7 @@ function Wind({ forecast, units }: { forecast: Forecast; units: Units }) {
             {/* Sways around the true direction; stronger wind, quicker sway. */}
             <g
               className="compass-needle"
-              style={{ animationDuration: `${Math.max(0.9, 4 - (units === 'metric' ? c.wind : c.wind * 1.609) / 12)}s` }}
+              style={{ animationDuration: `${Math.max(0.9, 4 - toKmh(c.wind, prefs.wind) / 12)}s` }}
             >
               <path d="M40 18 L46 32 L40 29 L34 32 Z" className="compass-arrow" />
               <line x1="40" y1="29" x2="40" y2="58" className="compass-tail" />
@@ -145,7 +148,8 @@ function Wind({ forecast, units }: { forecast: Forecast; units: Units }) {
 
 /* ----------------------------------------------------------- Pressure */
 
-function Pressure({ forecast, units }: { forecast: Forecast; units: Units }) {
+function Pressure({ forecast }: { forecast: Forecast; units: Units }) {
+  const prefs = usePrefs()
   const i = nowIndex(forecast)
   const series = forecast.hourly.pressure.slice(i, i + 13)
   const ahead = series[3] ?? series.at(-1) ?? forecast.current.pressure
@@ -164,7 +168,7 @@ function Pressure({ forecast, units }: { forecast: Forecast; units: Units }) {
     <div className="cond">
       <h3>Pressure</h3>
       <p className="cond-value">
-        {formatPressure(forecast.current.pressure, units)}
+        {formatPressureIn(forecast.current.pressure, prefs.pressure)}
       </p>
       <p className={`pressure-trend is-${trend.toLowerCase()}`}>
         <Icon size={16} weight="bold" aria-hidden="true" /> {trend} over the next 3 h

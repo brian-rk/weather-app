@@ -20,8 +20,12 @@ export type Sky =
 
 export type Condition = { sky: Sky; label: string }
 
+export type WindUnit = 'kmh' | 'mph' | 'ms'
+
 export type Forecast = {
   timezone: string
+  /** Set by forecastForDay: which day of the forecast this view is centred on (0 = today). */
+  view?: { day: number }
   current: {
     time: string
     temperature: number
@@ -46,6 +50,14 @@ export type Forecast = {
     isDay: number[]
     pressure: number[]
     uv: number[]
+    apparent: number[]
+    humidity: number[]
+    visibility: number[]
+    windDirection: number[]
+    gusts: number[]
+    cloud: number[]
+    /** Millimetres of rain/snow water in the hour. */
+    rainMm: number[]
   }
   daily: {
     time: string[]
@@ -58,6 +70,9 @@ export type Forecast = {
     /** Seconds of daylight. */
     daylight: number[]
     uvMax: number[]
+    /** Millimetres for the day. */
+    rainSum: number[]
+    gustMax: number[]
   }
 }
 
@@ -128,10 +143,8 @@ export const DEFAULT_SAVED: Place[] = [
   { id: '1850147', name: 'Tokyo', region: 'Japan', latitude: 35.6895, longitude: 139.6917 },
 ]
 
-function unitParams(units: Units) {
-  return units === 'imperial'
-    ? '&temperature_unit=fahrenheit&wind_speed_unit=mph'
-    : ''
+function unitParams(units: Units, wind: WindUnit = units === 'imperial' ? 'mph' : 'kmh') {
+  return `${units === 'imperial' ? '&temperature_unit=fahrenheit' : ''}&wind_speed_unit=${wind}`
 }
 
 async function getJSON<T>(url: string, signal?: AbortSignal): Promise<T> {
@@ -165,6 +178,13 @@ type RawForecast = {
     is_day: number[]
     pressure_msl: number[]
     uv_index: number[]
+    apparent_temperature: number[]
+    relative_humidity_2m: number[]
+    visibility: number[]
+    wind_direction_10m: number[]
+    wind_gusts_10m: number[]
+    cloud_cover: number[]
+    precipitation: number[]
   }
   daily: {
     time: string[]
@@ -176,6 +196,8 @@ type RawForecast = {
     sunset: string[]
     daylight_duration: number[]
     uv_index_max: number[]
+    precipitation_sum: number[]
+    wind_gusts_10m_max: number[]
   }
 }
 
@@ -183,13 +205,14 @@ export async function fetchForecast(
   place: Place,
   units: Units,
   signal?: AbortSignal,
+  wind?: WindUnit,
 ): Promise<Forecast> {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}` +
     '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,uv_index,visibility' +
-    '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation_probability,is_day,pressure_msl,uv_index' +
-    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,daylight_duration,uv_index_max' +
-    `&timezone=auto&forecast_days=7${unitParams(units)}`
+    '&hourly=temperature_2m,weather_code,wind_speed_10m,precipitation_probability,is_day,pressure_msl,uv_index,apparent_temperature,relative_humidity_2m,visibility,wind_direction_10m,wind_gusts_10m,cloud_cover,precipitation' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,daylight_duration,uv_index_max,precipitation_sum,wind_gusts_10m_max' +
+    `&timezone=auto&forecast_days=16${unitParams(units, wind)}`
   const raw = await getJSON<RawForecast>(url, signal)
   const c = raw.current
   return {
@@ -217,6 +240,13 @@ export async function fetchForecast(
       isDay: raw.hourly.is_day,
       pressure: raw.hourly.pressure_msl,
       uv: raw.hourly.uv_index,
+      apparent: raw.hourly.apparent_temperature,
+      humidity: raw.hourly.relative_humidity_2m,
+      visibility: raw.hourly.visibility,
+      windDirection: raw.hourly.wind_direction_10m,
+      gusts: raw.hourly.wind_gusts_10m,
+      cloud: raw.hourly.cloud_cover,
+      rainMm: raw.hourly.precipitation,
     },
     daily: {
       time: raw.daily.time,
@@ -228,6 +258,54 @@ export async function fetchForecast(
       sunset: raw.daily.sunset,
       daylight: raw.daily.daylight_duration,
       uvMax: raw.daily.uv_index_max,
+      rainSum: raw.daily.precipitation_sum,
+      gustMax: raw.daily.wind_gusts_10m_max,
+    },
+  }
+}
+
+/**
+ * A view of the forecast centred on another day: `current` becomes that
+ * day's midday picture and the daily series starts at that day, so every
+ * card can render a future day without knowing about it.
+ */
+export function forecastForDay(f: Forecast, day: number): Forecast {
+  if (day <= 0 || day >= f.daily.time.length) return { ...f, view: { day: 0 } }
+  const date = f.daily.time[day]
+  const at = (h: number) => f.hourly.time.indexOf(`${date}T${String(h).padStart(2, '0')}:00`)
+  const i = Math.max(at(13), 0)
+  const h = f.hourly
+  const d = f.daily
+  const from = <T,>(a: T[]) => a.slice(day)
+  return {
+    ...f,
+    view: { day },
+    current: {
+      time: `${date}T13:00`,
+      temperature: d.max[day],
+      feelsLike: h.apparent[i],
+      humidity: h.humidity[i],
+      code: d.code[day],
+      isDay: true,
+      wind: h.wind[i],
+      windDirection: h.windDirection[i],
+      gusts: h.gusts[i],
+      pressure: h.pressure[i],
+      uv: d.uvMax[day],
+      visibility: h.visibility[i] ?? null,
+    },
+    daily: {
+      time: from(d.time),
+      code: from(d.code),
+      max: from(d.max),
+      min: from(d.min),
+      precipitation: from(d.precipitation),
+      sunrise: from(d.sunrise),
+      sunset: from(d.sunset),
+      daylight: from(d.daylight),
+      uvMax: from(d.uvMax),
+      rainSum: from(d.rainSum),
+      gustMax: from(d.gustMax),
     },
   }
 }
@@ -459,4 +537,14 @@ export function timeAgo(ms: number) {
   if (m < 60) return `${m} min ago`
   const h = Math.round(m / 60)
   return `${h} h ago`
+}
+
+export function shortDate(isoDate: string) {
+  const [y, m, d] = isoDate.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  })
 }

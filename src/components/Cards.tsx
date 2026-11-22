@@ -1,12 +1,18 @@
-import { CloudRain, Drop, MapPin, Star } from '@phosphor-icons/react'
+import type { PointerEvent } from 'react'
+import { CloudRain, Drop, MapPin, ShareNetwork, Star } from '@phosphor-icons/react'
 import { WeatherArt } from './WeatherArt'
 import { SkyFx, WindGusts } from './SkyFx'
+import { Odometer } from './Odometer'
+import { TomorrowScene } from './TomorrowScene'
+import { outfitFor } from '../lib/outfit'
 import { useCountUp } from '../lib/useCountUp'
+import { toCelsius, toKmh, usePrefs } from '../lib/prefs'
 import {
   aqiLabel,
   describe,
   formatVisibility,
   round,
+  shortDate,
   weekday,
   type AirQuality,
   type Forecast,
@@ -17,29 +23,51 @@ import {
 
 /* ---------------------------------------------------------------- Now */
 
+/** Tilt the illustration toward the pointer (CSS variables, no re-render). */
+function tilt(e: PointerEvent<HTMLElement>) {
+  const r = e.currentTarget.getBoundingClientRect()
+  const x = (e.clientX - r.left) / r.width - 0.5
+  const y = (e.clientY - r.top) / r.height - 0.5
+  e.currentTarget.style.setProperty('--tilt-x', `${(-y * 10).toFixed(2)}deg`)
+  e.currentTarget.style.setProperty('--tilt-y', `${(x * 14).toFixed(2)}deg`)
+}
+function untilt(e: PointerEvent<HTMLElement>) {
+  e.currentTarget.style.setProperty('--tilt-x', '0deg')
+  e.currentTarget.style.setProperty('--tilt-y', '0deg')
+}
+
 export function NowCard({
   place,
   forecast,
   units,
   saved,
   onToggleSave,
+  onShare,
 }: {
   place: Place
   forecast: Forecast
   units: Units
   saved: boolean
   onToggleSave: () => void
+  onShare: () => void
 }) {
+  const prefs = usePrefs()
   const c = forecast.current
   const cond = describe(c.code)
+  const future = (forecast.view?.day ?? 0) > 0
   const mood = !c.isDay ? 'night' : cond.sky === 'clear' || cond.sky === 'partly' ? 'day' : 'grey'
-  const temp = useCountUp(c.temperature)
   // Roughly a fresh breeze (Beaufort 4) and up.
-  const kmh = units === 'metric' ? c.wind : c.wind * 1.609
+  const kmh = toKmh(c.wind, prefs.wind)
   const breezy = kmh >= 20
+  const when = future ? shortDate(c.time.slice(0, 10)) : 'Now'
 
   return (
-    <section className={`card now now--${mood}`} aria-labelledby="now-title">
+    <section className={`card now now--${mood}`} aria-labelledby="now-title" onPointerMove={tilt} onPointerLeave={untilt}>
+      <div className="now-sky" aria-hidden="true">
+        <span className={`sky-layer sky-day ${mood === 'day' ? 'is-on' : ''}`} />
+        <span className={`sky-layer sky-grey ${mood === 'grey' ? 'is-on' : ''}`} />
+        <span className={`sky-layer sky-night ${mood === 'night' ? 'is-on' : ''}`} />
+      </div>
       <div className="now-puffs" aria-hidden="true" />
       <SkyFx sky={cond.sky} tone="light" />
       {breezy && <WindGusts kmh={kmh} />}
@@ -61,21 +89,31 @@ export function NowCard({
           <Star size={18} weight={saved ? 'fill' : 'regular'} />
           <span className="sr-only">{saved ? `Remove ${place.name} from saved cities` : `Save ${place.name}`}</span>
         </button>
+        <button type="button" className="save-btn" onClick={onShare} title="Share this forecast">
+          <ShareNetwork size={18} />
+          <span className="sr-only">Share the forecast for {place.name}</span>
+        </button>
       </div>
 
       <div className="now-head">
-        <h2 id="now-title">{cond.label}</h2>
-        <p className="muted">Now</p>
+        <h2 id="now-title">Weather</h2>
+        <p className="muted">
+          {when} · {cond.label}
+        </p>
       </div>
 
-      <WeatherArt sky={cond.sky} isDay={c.isDay} className="now-art float" />
+      <div className="now-art-wrap">
+        <WeatherArt sky={cond.sky} isDay={c.isDay} className="now-art float" />
+      </div>
 
       <div className="now-temp">
         <p className="temp-xl">
-          {round(temp)}
+          <Odometer value={c.temperature} />
           <span>°{units === 'metric' ? 'C' : 'F'}</span>
         </p>
-        <p className="muted">Feels like {round(c.feelsLike)}°</p>
+        <p className="muted">
+          {future ? `Low ${round(forecast.daily.min[0])}° · feels like ${round(c.feelsLike)}° at midday` : `Feels like ${round(c.feelsLike)}°`}
+        </p>
       </div>
 
       <dl className="now-stats">
@@ -85,7 +123,7 @@ export function NowCard({
         </div>
         <div className="stat">
           <dt>Humidity</dt>
-          <dd>{c.humidity}%</dd>
+          <dd>{round(c.humidity)}%</dd>
         </div>
       </dl>
     </section>
@@ -154,7 +192,17 @@ function pollenLevel(v: number) {
   return 'high'
 }
 
-export function AirCard({ air, isDay, sky }: { air: AirQuality | null | undefined; isDay: boolean; sky: Forecast['current']['code'] }) {
+export function AirCard({
+  air,
+  isDay,
+  sky,
+  humidity,
+}: {
+  air: AirQuality | null | undefined
+  isDay: boolean
+  sky: Forecast['current']['code']
+  humidity: number | null
+}) {
   const cond = describe(sky)
   const aqi = air?.aqi ?? null
   const pct = aqi == null ? 0 : Math.min(aqi / 300, 1)
@@ -163,16 +211,15 @@ export function AirCard({ air, isDay, sky }: { air: AirQuality | null | undefine
     <section className="card air" aria-labelledby="air-title">
       <div className="air-stars" aria-hidden="true" />
       <div className="air-copy">
-        <h2 id="air-title">Air quality</h2>
+        <h2 id="air-title">Humidity</h2>
         {air === undefined ? (
           <span className="skeleton-line on-dark" />
-        ) : aqi === null ? (
-          <p className="air-label">No sensor reading nearby</p>
         ) : (
           <>
-            <p className="air-label">{aqiLabel(aqi)}</p>
+            <p className="air-label">{aqi === null ? 'No air sensor nearby' : `${aqiLabel(aqi)} · AQI ${aqi}`}</p>
             <p className="air-value">
-              {aqi} <small>US AQI</small>
+              {humidity == null ? '--' : round(humidity)}
+              <small>%</small>
             </p>
           </>
         )}
@@ -223,15 +270,17 @@ export function TomorrowCard({ place, forecast, units }: { place: Place; forecas
   const cond = describe(d.code[1])
   const wet = cond.sky === 'rain' || cond.sky === 'drizzle' || cond.sky === 'storm' || cond.sky === 'snow'
   const high = useCountUp(d.max[1])
+  const future = (forecast.view?.day ?? 0) > 0
+  const outfit = outfitFor(cond.sky, toCelsius(d.max[1], units))
   return (
     <section className={`card tomorrow ${wet ? 'tomorrow--wet' : 'tomorrow--dry'}`} aria-labelledby="tomorrow-title">
       <SkyFx sky={cond.sky} tone="lime" />
       <div className="tomorrow-head">
-        <p className="muted">Tomorrow, {weekday(d.time[1])}</p>
+        <p className="muted">{future ? `Next day, ${weekday(d.time[1])}` : `Tomorrow, ${weekday(d.time[1])}`}</p>
         <h2 id="tomorrow-title">{place.name}</h2>
       </div>
 
-      <WeatherArt sky={cond.sky} isDay className="tomorrow-art float" />
+      <TomorrowScene outfit={outfit} className="tomorrow-scene" />
 
       <div className="tomorrow-foot">
         <p className="temp-lg">

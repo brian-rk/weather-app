@@ -17,7 +17,7 @@ import {
   StackSimple,
 } from '@phosphor-icons/react'
 import { frameLabel, useRadar } from './useRadar'
-import { SkyIcon } from './SkyIcon'
+import { WeatherArt } from './WeatherArt'
 import { LABEL_LAYERS, applyMapColors, mapStyle } from '../lib/mapStyle'
 import {
   describe,
@@ -47,13 +47,13 @@ function ring(place: Place) {
   })
 }
 
-function tempMarker(s: Snapshot) {
+function tempMarker(s: Snapshot, i: number, unit: string) {
   const el = document.createElement('div')
   el.className = 'map-temp-wrap'
   el.innerHTML = renderToStaticMarkup(
-    <span className="map-temp">
-      <SkyIcon sky={describe(s.code).sky} isDay={s.isDay} size={16} weight="fill" />
-      {round(s.temperature)}°
+    <span className="map-temp" style={{ animationDelay: `${150 + i * 90}ms` }}>
+      <WeatherArt sky={describe(s.code).sky} isDay={s.isDay} className="map-temp-art" still />
+      <span>{round(s.temperature)}°{unit}</span>
     </span>,
   )
   return el
@@ -146,7 +146,7 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
       .then((snaps) => {
         snaps.forEach((s, i) => {
           markers.current.push(
-            new maplibregl.Marker({ element: tempMarker(s) })
+            new maplibregl.Marker({ element: tempMarker(s, i, units === 'metric' ? 'C' : 'F'), anchor: 'bottom' })
               .setLngLat([pts[i].longitude, pts[i].latitude])
               .addTo(m),
           )

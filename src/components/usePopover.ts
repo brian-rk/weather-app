@@ -26,7 +26,8 @@ export function usePopover<T extends HTMLElement>(open: boolean, onClose: () => 
     }
     const onDown = (e: PointerEvent) => {
       const t = e.target as Node
-      if (panel?.contains(t) || ignore?.current?.contains(t)) return
+      // Clicks on any panel trigger are handled by the trigger itself (toggle).
+      if (panel?.contains(t) || ignore?.current?.contains(t) || (t as Element).closest?.('[data-panel-trigger]')) return
       closeRef.current()
     }
     document.addEventListener('keydown', onKey)
