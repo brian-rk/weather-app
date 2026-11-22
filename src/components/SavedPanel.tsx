@@ -1,0 +1,172 @@
+import { useEffect, useId, useState, type RefObject } from 'react'
+import { CaretDown, CaretUp, DotsSixVertical, Star, Trash, X } from '@phosphor-icons/react'
+import { SkyIcon } from './SkyIcon'
+import { usePopover } from './usePopover'
+import { describe, fetchSnapshots, round, type Place, type Snapshot, type Units } from '../lib/weather'
+
+export const MAX_SAVED = 12
+
+type Props = {
+  open: boolean
+  onClose: () => void
+  trigger: RefObject<HTMLElement | null>
+  saved: Place[]
+  current: Place
+  units: Units
+  onOpenPlace: (p: Place) => void
+  onChange: (next: Place[]) => void
+}
+
+export function SavedPanel({ open, onClose, trigger, saved, current, units, onOpenPlace, onChange }: Props) {
+  const ref = usePopover<HTMLElement>(open, onClose, trigger)
+  const titleId = useId()
+  const [snaps, setSnaps] = useState<Record<string, Snapshot>>({})
+  const [dragging, setDragging] = useState<number | null>(null)
+  const [over, setOver] = useState<number | null>(null)
+
+  const ids = saved.map((p) => p.id).join('|')
+  useEffect(() => {
+    if (!open || saved.length === 0) return
+    const ctrl = new AbortController()
+    fetchSnapshots(saved, units, ctrl.signal)
+      .then((list) => setSnaps(Object.fromEntries(list.map((s, i) => [saved[i].id, s]))))
+      .catch(() => {})
+    return () => ctrl.abort()
+    // Re-fetch only when the set of cities or units changes, not on reorder.
+  }, [open, ids, units]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!open) return null
+
+  const isSaved = saved.some((p) => p.id === current.id)
+  const full = saved.length >= MAX_SAVED
+
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= saved.length || from === to) return
+    const next = [...saved]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    onChange(next)
+  }
+
+  return (
+    <aside ref={ref} className="sheet" role="dialog" aria-modal="false" aria-labelledby={titleId}>
+      <header className="sheet-head">
+        <h2 id={titleId}>Saved cities</h2>
+        <button type="button" className="icon-btn" onClick={onClose}>
+          <X size={18} />
+          <span className="sr-only">Close saved cities</span>
+        </button>
+      </header>
+
+      {!isSaved && (
+        <button
+          type="button"
+          className="sheet-add"
+          disabled={full}
+          onClick={() => onChange([current, ...saved])}
+          data-autofocus
+        >
+          <Star size={18} weight="fill" aria-hidden="true" />
+          <span>
+            Save {current.name}
+            {full && <small>You can save up to {MAX_SAVED}. Remove one first.</small>}
+          </span>
+        </button>
+      )}
+
+      {saved.length === 0 ? (
+        <p className="sheet-empty">
+          No saved cities yet. Save the city you're viewing with the star on its card, or from here.
+        </p>
+      ) : (
+        <>
+          <p className="sheet-hint">Drag to reorder. The first two appear on the dashboard.</p>
+          <ol className="saved-list">
+            {saved.map((p, i) => {
+              const s = snaps[p.id]
+              const cond = s ? describe(s.code) : null
+              const classes = ['saved-item', dragging === i ? 'is-dragging' : '', over === i && dragging !== i ? 'is-over' : '']
+                .filter(Boolean)
+                .join(' ')
+              return (
+                <li
+                  key={p.id}
+                  className={classes}
+                  draggable
+                  onDragStart={(e) => {
+                    setDragging(i)
+                    e.dataTransfer.effectAllowed = 'move'
+                    e.dataTransfer.setData('text/plain', String(i))
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setOver(i)
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (dragging !== null) move(dragging, i)
+                    setDragging(null)
+                    setOver(null)
+                  }}
+                  onDragEnd={() => {
+                    setDragging(null)
+                    setOver(null)
+                  }}
+                >
+                  <span className="saved-grip" aria-hidden="true">
+                    <DotsSixVertical size={18} weight="bold" />
+                  </span>
+                  <button
+                    type="button"
+                    className="saved-open"
+                    onClick={() => {
+                      onOpenPlace(p)
+                      onClose()
+                    }}
+                    aria-current={p.id === current.id ? 'true' : undefined}
+                  >
+                    <strong>{p.name}</strong>
+                    <small>{p.region || 'Saved spot'}</small>
+                  </button>
+                  <span className="saved-now">
+                    {s && cond ? (
+                      <>
+                        <SkyIcon sky={cond.sky} isDay={s.isDay} size={18} weight="duotone" />
+                        {round(s.temperature)}°
+                      </>
+                    ) : (
+                      <span className="skeleton-line short" />
+                    )}
+                  </span>
+                  <span className="saved-actions">
+                    <button type="button" className="icon-btn" onClick={() => move(i, i - 1)} disabled={i === 0}>
+                      <CaretUp size={16} />
+                      <span className="sr-only">Move {p.name} up</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => move(i, i + 1)}
+                      disabled={i === saved.length - 1}
+                    >
+                      <CaretDown size={16} />
+                      <span className="sr-only">Move {p.name} down</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn--danger"
+                      onClick={() => onChange(saved.filter((x) => x.id !== p.id))}
+                    >
+                      <Trash size={16} />
+                      <span className="sr-only">Remove {p.name}</span>
+                    </button>
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
+        </>
+      )}
+    </aside>
+  )
+}

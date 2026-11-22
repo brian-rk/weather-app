@@ -1,8 +1,11 @@
+import type { RefObject } from 'react'
 import {
   ArrowClockwise,
+  CircleHalf,
   Crosshair,
   MapTrifold,
   SquaresFour,
+  Star,
 } from '@phosphor-icons/react'
 
 type Props = {
@@ -12,9 +15,28 @@ type Props = {
   locating: boolean
   onRefresh: () => void
   refreshing: boolean
+  savedOpen: boolean
+  onToggleSaved: () => void
+  savedRef: RefObject<HTMLButtonElement | null>
+  themeOpen: boolean
+  onToggleTheme: () => void
+  themeRef: RefObject<HTMLButtonElement | null>
 }
 
-export function Sidebar({ mapExpanded, onToggleMap, onLocate, locating, onRefresh, refreshing }: Props) {
+export function Sidebar({
+  mapExpanded,
+  onToggleMap,
+  onLocate,
+  locating,
+  onRefresh,
+  refreshing,
+  savedOpen,
+  onToggleSaved,
+  savedRef,
+  themeOpen,
+  onToggleTheme,
+  themeRef,
+}: Props) {
   return (
     <nav className="sidebar" aria-label="Primary">
       <div className="brand" aria-label="Nimbus">
@@ -60,6 +82,20 @@ export function Sidebar({ mapExpanded, onToggleMap, onLocate, locating, onRefres
         </li>
         <li>
           <button
+            ref={savedRef}
+            type="button"
+            className="side-btn"
+            aria-expanded={savedOpen}
+            aria-haspopup="dialog"
+            onClick={onToggleSaved}
+            title="Saved cities"
+          >
+            <Star size={20} weight={savedOpen ? 'fill' : 'regular'} />
+            <span className="sr-only">Saved cities</span>
+          </button>
+        </li>
+        <li>
+          <button
             type="button"
             className="side-btn"
             onClick={onLocate}
@@ -72,16 +108,24 @@ export function Sidebar({ mapExpanded, onToggleMap, onLocate, locating, onRefres
         </li>
       </ul>
 
-      <button
-        type="button"
-        className="side-btn side-bottom"
-        onClick={onRefresh}
-        disabled={refreshing}
-        title="Refresh"
-      >
-        <ArrowClockwise size={20} className={refreshing ? 'spin' : undefined} />
-        <span className="sr-only">Refresh forecast</span>
-      </button>
+      <div className="side-bottom">
+        <button
+          ref={themeRef}
+          type="button"
+          className="side-btn"
+          aria-expanded={themeOpen}
+          aria-haspopup="dialog"
+          onClick={onToggleTheme}
+          title="Appearance"
+        >
+          <CircleHalf size={20} weight={themeOpen ? 'fill' : 'regular'} />
+          <span className="sr-only">Appearance</span>
+        </button>
+        <button type="button" className="side-btn" onClick={onRefresh} disabled={refreshing} title="Refresh">
+          <ArrowClockwise size={20} className={refreshing ? 'spin' : undefined} />
+          <span className="sr-only">Refresh forecast</span>
+        </button>
+      </div>
     </nav>
   )
 }

@@ -1,4 +1,4 @@
-import type { StyleSpecification } from 'maplibre-gl'
+import type { Map, StyleSpecification } from 'maplibre-gl'
 
 /**
  * Two-tone map in the spirit of the reference design: saturated water,
@@ -16,7 +16,32 @@ export const MAP_COLORS = {
   labelHalo: '#ffffff',
 }
 
+export const MAP_COLORS_DARK: typeof MAP_COLORS = {
+  water: '#1b3a5c',
+  waterShallow: '#24496f',
+  land: '#1c222c',
+  landShade: '#202734',
+  border: '#3a4557',
+  river: '#2d5b86',
+  label: '#d3dbe7',
+  labelHalo: '#11151c',
+}
+
 export const LABEL_LAYERS = ['label-country', 'label-city']
+
+/** Recolour the live map in place (no style reload, so markers and radar stay). */
+export function applyMapColors(m: Map, dark: boolean) {
+  const c = dark ? MAP_COLORS_DARK : MAP_COLORS
+  m.setPaintProperty('land', 'background-color', c.land)
+  m.setPaintProperty('landcover', 'fill-color', c.landShade)
+  m.setPaintProperty('water', 'fill-color', ['interpolate', ['linear'], ['zoom'], 3, c.water, 9, c.waterShallow])
+  m.setPaintProperty('rivers', 'line-color', c.river)
+  m.setPaintProperty('borders', 'line-color', c.border)
+  for (const id of LABEL_LAYERS) {
+    m.setPaintProperty(id, 'text-color', c.label)
+    m.setPaintProperty(id, 'text-halo-color', c.labelHalo)
+  }
+}
 
 export const mapStyle: StyleSpecification = {
   version: 8,

@@ -9,10 +9,23 @@ All data is live, and the app needs **no API keys or accounts**.
 - **Current conditions:** temperature, "feels like", visibility and humidity. The card's background changes for day, night and grey weather.
 - **City search:** finds any city as you type. Use the arrow keys and Enter to pick a result, or press `/` to jump to the search box.
 - **Live map:** a custom two-tone map (blue water, pale land) with a pin on the selected city and live temperature badges around it. You can zoom, recenter, show place names, and expand the map to full width.
-- **Quick-compare cities:** see other cities' highs and lows at a glance. Click one to switch to it; the city you leave moves into the list.
+- **Saved cities:** save any city with the star on its weather card. Open the Saved panel from the sidebar to see live temperatures, open a city, reorder (drag, or use the arrow buttons), or remove it. Your first two saved cities appear on the dashboard for quick comparison.
+- **Shareable links:** the address bar always holds the current city (and °F if chosen), so a bookmark or shared link reopens the same forecast. The share button copies the link, or opens the share sheet on phones.
+- **Weather anywhere on the map:** click any spot to preview its weather and place name, then open its full forecast.
+- **Light and dark themes:** follow your device, stay light or dark, or switch to dark after sunset in the selected city. The map recolours too.
+- **Always fresh:** "Updated 5 min ago" shows how old the data is. The forecast refreshes every 15 minutes, and again when you come back to the tab after a while.
 - **Air quality:** the current US Air Quality Index with a plain-language label and a meter.
 - **Today at a glance:** morning, afternoon, evening and night, for temperature, wind or chance of rain. Each icon's height shows the value, so the row reads like a small chart.
 - **Tomorrow:** the next day's high, low, conditions and chance of rain. The card turns green with falling rain when rain is forecast.
+- **7-day forecast:** each day's high, low, conditions and chance of rain, with a bar showing where the day's temperatures fall within the week. Today's bar also marks the current temperature.
+- **Next 24 hours:** a temperature line with chance-of-rain bars. Hover over it, or focus it and use the arrow keys, to see any hour's details.
+- **Rain radar:** switch on the radar from the map to see rain from the last two hours, with play and a time slider. Coverage depends on the country.
+- **Sun:** sunrise, sunset, where the sun is in the sky now, and how today's daylight compares with yesterday's.
+- **UV index:** the current level, today's peak, and the hours when you should protect your skin.
+- **Wind:** speed, direction on a compass, and gusts.
+- **Pressure:** current pressure, whether it's rising or falling over the next 3 hours, and what that usually means.
+- **Air quality detail:** PM2.5, PM10, ozone and nitrogen dioxide, plus pollen levels where they're available (Europe).
+- **Weather animations:** rain and drizzle fall, storms flash, snow drifts, sun rays turn, clouds and fog move, and gusts sweep across the card when it's windy. Temperatures count up, the 24-hour line draws itself and the week's bars grow in. All motion switches off when the system asks for reduced motion.
 - **Celsius or Fahrenheit:** switching units also switches wind speed between km/h and mph.
 - **Use my location:** shows the forecast for where you are (needs browser permission).
 - **Remembers you:** your city, saved cities and units are kept in the browser between visits.
@@ -43,6 +56,8 @@ All of these are free and need no API key.
 | City search | [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api) |
 | Air quality | [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) |
 | Map | [OpenFreeMap](https://openfreemap.org) (map data from OpenStreetMap, in the OpenMapTiles format) |
+| Rain radar | [RainViewer](https://www.rainviewer.com/api.html) (past two hours, tiles up to zoom 7) |
+| Place names for map clicks and "Use my location" | [BigDataCloud](https://www.bigdatacloud.com/free-api/free-reverse-geocode-to-city-api) free client-side reverse geocoding |
 
 ## Getting started
 
@@ -87,7 +102,15 @@ weather/
     │   ├── Search.tsx      # City search with keyboard support
     │   ├── Cards.tsx       # Now, city list, air quality, tomorrow and error cards
     │   ├── DayParts.tsx    # Morning to night breakdown with metric switch
+    │   ├── HourlyChart.tsx # Next 24 hours chart with hover and keyboard inspection
+    │   ├── WeekCard.tsx    # 7-day forecast with temperature range bars
+    │   ├── Conditions.tsx  # Sun, UV index, wind and pressure
     │   ├── MapCard.tsx     # MapLibre map, markers and map controls
+    │   ├── useRadar.ts     # RainViewer radar layers and playback
+    │   ├── SavedPanel.tsx  # Saved cities: open, reorder, remove
+    │   ├── ThemeMenu.tsx   # Appearance: system, light, dark, day and night
+    │   ├── usePopover.ts   # Escape, outside click and focus handling for panels
+    │   ├── SkyFx.tsx       # Card-wide rain, snow, lightning and wind effects
     │   ├── WeatherArt.tsx  # Hand-built SVG weather illustrations
     │   └── SkyIcon.tsx     # Small icons for each type of weather
     └── lib/
@@ -123,5 +146,7 @@ The layout is based on a weather dashboard design shot from Dribbble, adapted in
 ## Credits
 
 - Weather, geocoding and air quality data by [Open-Meteo](https://open-meteo.com) (CC BY 4.0)
+- Rain radar by [RainViewer](https://www.rainviewer.com)
+- Reverse geocoding by [BigDataCloud](https://www.bigdatacloud.com)
 - Map by [OpenFreeMap](https://openfreemap.org), © [OpenMapTiles](https://www.openmaptiles.org), data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright)
 - Icons by [Phosphor Icons](https://phosphoricons.com)
