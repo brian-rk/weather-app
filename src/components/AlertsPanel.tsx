@@ -2,6 +2,7 @@ import { BellSimple, CloudLightning, CloudRain, Drop, Snowflake, Sun, Thermomete
 import { Sheet } from './Sheet'
 import type { WeatherAlert } from '../lib/insights'
 import type { AlertKind } from '../lib/prefs'
+import { t } from '../lib/i18n'
 
 const ICONS: Record<AlertKind, typeof Sun> = {
   storm: CloudLightning,
@@ -29,7 +30,7 @@ export function AlertsPanel({ open, onClose, side, alerts, unread, onMarkAllRead
     <Sheet
       open={open}
       onClose={onClose}
-      title="Weather alerts"
+      title={t('Weather alerts')}
       side={side}
       icon={<BellSimple size={20} weight="duotone" aria-hidden="true" />}
     >
@@ -37,16 +38,16 @@ export function AlertsPanel({ open, onClose, side, alerts, unread, onMarkAllRead
         <div className="alerts-empty">
           <span className="alerts-calm" aria-hidden="true" />
           <p>
-            <strong>All clear.</strong> Nothing to watch for in the next two days.
+            <strong>{t('All clear.')}</strong> {t('Nothing to watch for in the next two days.')}
           </p>
         </div>
       ) : (
         <>
           <div className="alerts-bar">
-            <p className="sheet-hint">Worked out from the forecast for the next two days.</p>
+            <p className="sheet-hint">{t('Worked out from the forecast for the next two days.')}</p>
             {unread.size > 0 && (
               <button type="button" className="btn-ghost btn-ghost--small" onClick={onMarkAllRead}>
-                Mark all read
+                {t('Mark all read')}
               </button>
             )}
           </div>
@@ -65,7 +66,7 @@ export function AlertsPanel({ open, onClose, side, alerts, unread, onMarkAllRead
                   <div>
                     <p className="alert-title">
                       {a.title}
-                      {unread.has(a.id) && <span className="sr-only"> (new)</span>}
+                      {unread.has(a.id) && <span className="sr-only"> ({t('new')})</span>}
                     </p>
                     <p className="alert-body">{a.body}</p>
                   </div>
@@ -76,7 +77,7 @@ export function AlertsPanel({ open, onClose, side, alerts, unread, onMarkAllRead
         </>
       )}
       <button type="button" className="btn-link" onClick={onOpenSettings}>
-        Choose which alerts you get
+        {t('Choose which alerts you get')}
       </button>
     </Sheet>
   )

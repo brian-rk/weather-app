@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 import { SkyIcon } from './SkyIcon'
 import { describe, nowIndex, round, type Forecast, type Units } from '../lib/weather'
 import { formatHour, usePrefs } from '../lib/prefs'
+import { t } from '../lib/i18n'
 
 const HOURS = 25 // now + next 24
 const HEIGHT = 210
@@ -98,13 +99,13 @@ export function HourlyChart({ forecast, units }: { forecast: Forecast; units: Un
   return (
     <section className="hourly" aria-labelledby="hourly-title">
       <header className="section-head">
-        <h2 id="hourly-title">{future ? 'Through the day' : 'Next 24 hours'}</h2>
+        <h2 id="hourly-title">{future ? t('Through the day') : t('Next 24 hours')}</h2>
         <ul className="legend" aria-hidden="true">
           <li>
-            <span className="legend-line" /> Temperature
+            <span className="legend-line" /> {t('Temperature')}
           </li>
           <li>
-            <span className="legend-bar" /> Chance of rain
+            <span className="legend-bar" /> {t('Chance of rain')}
           </li>
         </ul>
       </header>
@@ -114,7 +115,7 @@ export function HourlyChart({ forecast, units }: { forecast: Forecast; units: Un
         className="hourly-plot"
         tabIndex={0}
         role="group"
-        aria-label="Hourly temperature and rain chance. Use the left and right arrow keys to inspect each hour."
+        aria-label={t('Hourly temperature and rain chance. Use the left and right arrow keys to inspect each hour.')}
         onPointerMove={pick}
         onPointerLeave={() => setActive(null)}
         onKeyDown={onKey}
@@ -170,7 +171,7 @@ export function HourlyChart({ forecast, units }: { forecast: Forecast; units: Un
           {marks.map((p) => (
             <li key={p.time} style={{ left: x(p.k) }}>
               <SkyIcon sky={p.sky} isDay={p.isDay} size={18} weight="duotone" />
-              <span>{p.k === 0 && !future ? 'Now' : formatHour(p.time, prefs.clock)}</span>
+              <span>{p.k === 0 && !future ? t('Now') : formatHour(p.time, prefs.clock)}</span>
             </li>
           ))}
         </ol>
@@ -181,11 +182,11 @@ export function HourlyChart({ forecast, units }: { forecast: Forecast; units: Un
             style={{ left: Math.min(Math.max(x(sel.k), 70), width - 70) }}
             role="status"
           >
-            <strong>{sel.k === 0 && !future ? 'Now' : formatHour(sel.time, prefs.clock)}</strong>
+            <strong>{sel.k === 0 && !future ? t('Now') : formatHour(sel.time, prefs.clock)}</strong>
             <span>
               {round(sel.temp)}°{unit} · {sel.label}
             </span>
-            <span>{sel.rain}% chance of rain</span>
+            <span>{t('{n}% chance of rain', { n: sel.rain })}</span>
           </div>
         )}
       </div>

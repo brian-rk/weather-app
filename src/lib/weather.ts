@@ -1,3 +1,5 @@
+import { formatDay, getLang, t } from './i18n'
+
 export type Units = 'metric' | 'imperial'
 
 export type Place = {
@@ -125,8 +127,10 @@ const WMO: Record<number, Condition> = {
   99: { sky: 'storm', label: 'Thunderstorm, hail' },
 }
 
+/** Sky type and a translated label for a WMO weather code. */
 export function describe(code: number): Condition {
-  return WMO[code] ?? { sky: 'cloudy', label: 'Unsettled' }
+  const c = WMO[code] ?? { sky: 'cloudy', label: 'Unsettled' }
+  return { sky: c.sky, label: t(c.label) }
 }
 
 export const DEFAULT_PLACE: Place = {
@@ -379,7 +383,7 @@ type RawGeo = {
 }
 
 export async function searchPlaces(query: string, signal?: AbortSignal): Promise<Place[]> {
-  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=en&format=json`
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=${getLang()}&format=json`
   const raw = await getJSON<RawGeo>(url, signal)
   return (raw.results ?? []).map((r) => ({
     id: String(r.id),
@@ -391,12 +395,12 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
 }
 
 export function aqiLabel(aqi: number) {
-  if (aqi <= 50) return 'Good air quality'
-  if (aqi <= 100) return 'Moderate air quality'
-  if (aqi <= 150) return 'Unhealthy for sensitive groups'
-  if (aqi <= 200) return 'Unhealthy air'
-  if (aqi <= 300) return 'Very unhealthy air'
-  return 'Hazardous air'
+  if (aqi <= 50) return t('Good air quality')
+  if (aqi <= 100) return t('Moderate air quality')
+  if (aqi <= 150) return t('Unhealthy for sensitive groups')
+  if (aqi <= 200) return t('Unhealthy air')
+  if (aqi <= 300) return t('Very unhealthy air')
+  return t('Hazardous air')
 }
 
 export const round = (n: number) => Math.round(n)
@@ -414,11 +418,7 @@ export function hourIndex(f: Forecast, date: string, hour: number) {
 }
 
 export function weekday(isoDate: string, style: 'long' | 'short' = 'long') {
-  const [y, m, d] = isoDate.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
-    weekday: style,
-    timeZone: 'UTC',
-  })
+  return formatDay(isoDate, style)
 }
 
 /** "HH:MM" from a local ISO timestamp like 2026-11-22T07:29. */
@@ -442,11 +442,11 @@ export function compass(degrees: number) {
 }
 
 export function uvLevel(uv: number) {
-  if (uv < 3) return { label: 'Low', advice: 'No protection needed.' }
-  if (uv < 6) return { label: 'Moderate', advice: 'Sunscreen if outside for long.' }
-  if (uv < 8) return { label: 'High', advice: 'Sunscreen, hat and shade at midday.' }
-  if (uv < 11) return { label: 'Very high', advice: 'Avoid the midday sun.' }
-  return { label: 'Extreme', advice: 'Stay indoors around midday.' }
+  if (uv < 3) return { label: t('Low'), advice: t('No protection needed.') }
+  if (uv < 6) return { label: t('Moderate'), advice: t('Sunscreen if outside for long.') }
+  if (uv < 8) return { label: t('High'), advice: t('Sunscreen, hat and shade at midday.') }
+  if (uv < 11) return { label: t('Very high'), advice: t('Avoid the midday sun.') }
+  return { label: t('Extreme'), advice: t('Stay indoors around midday.') }
 }
 
 export function formatPressure(hPa: number, units: Units) {
@@ -521,7 +521,7 @@ export function placeFromSearch(search: string): { place: Place | null; units: U
   return {
     place: {
       id: p.get('id') || `pt-${lat.toFixed(3)},${lon.toFixed(3)}`,
-      name: (p.get('city') || 'Shared place').slice(0, 80),
+      name: (p.get('city') || t('Shared place')).slice(0, 80),
       region: (p.get('region') || '').slice(0, 120),
       latitude: lat,
       longitude: lon,
@@ -532,19 +532,59 @@ export function placeFromSearch(search: string): { place: Place | null; units: U
 
 export function timeAgo(ms: number) {
   const s = Math.round(ms / 1000)
-  if (s < 45) return 'just now'
+  if (s < 45) return t('just now')
   const m = Math.round(s / 60)
-  if (m < 60) return `${m} min ago`
+  if (m < 60) return t('{n} min ago', { n: m })
   const h = Math.round(m / 60)
-  return `${h} h ago`
+  return t('{n} h ago', { n: h })
 }
 
 export function shortDate(isoDate: string) {
-  const [y, m, d] = isoDate.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  })
+  return formatDay(isoDate, 'date')
+}
+
+/* ------------------------------------------------------------ Compare */
+
+export type CompareData = {
+  current: { temperature: number; code: number; isDay: boolean }
+  daily: { time: string[]; max: number[]; min: number[]; rain: number[]; wind: number[]; code: number[] }
+}
+
+/** Current conditions and a 7-day outlook for several places in one request. */
+export async function fetchCompare(
+  places: Place[],
+  units: Units,
+  wind: WindUnit,
+  signal?: AbortSignal,
+): Promise<CompareData[]> {
+  if (places.length === 0) return []
+  const url =
+    `https://api.open-meteo.com/v1/forecast?latitude=${places.map((p) => p.latitude.toFixed(3)).join(',')}` +
+    `&longitude=${places.map((p) => p.longitude.toFixed(3)).join(',')}` +
+    '&current=temperature_2m,weather_code,is_day' +
+    '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,weather_code' +
+    `&timezone=auto&forecast_days=7${unitParams(units, wind)}`
+  type Raw = {
+    current: { temperature_2m: number; weather_code: number; is_day: number }
+    daily: {
+      time: string[]
+      temperature_2m_max: number[]
+      temperature_2m_min: number[]
+      precipitation_probability_max: number[]
+      wind_speed_10m_max: number[]
+      weather_code: number[]
+    }
+  }
+  const raw = await getJSON<Raw | Raw[]>(url, signal)
+  return (Array.isArray(raw) ? raw : [raw]).map((r) => ({
+    current: { temperature: r.current.temperature_2m, code: r.current.weather_code, isDay: r.current.is_day === 1 },
+    daily: {
+      time: r.daily.time,
+      max: r.daily.temperature_2m_max,
+      min: r.daily.temperature_2m_min,
+      rain: r.daily.precipitation_probability_max,
+      wind: r.daily.wind_speed_10m_max,
+      code: r.daily.weather_code,
+    },
+  }))
 }

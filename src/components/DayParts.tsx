@@ -3,6 +3,7 @@ import { Thermometer, Umbrella, Wind } from '@phosphor-icons/react'
 import { SkyIcon } from './SkyIcon'
 import { describe, hourIndex, round, weekday, type Forecast, type Units } from '../lib/weather'
 import { usePrefs, WIND_LABEL } from '../lib/prefs'
+import { t } from '../lib/i18n'
 
 type Metric = 'temp' | 'wind' | 'rain'
 
@@ -50,8 +51,8 @@ export function DayParts({ forecast }: { forecast: Forecast; units: Units }) {
   return (
     <section className="dayparts" aria-labelledby="dayparts-title">
       <header className="dayparts-head">
-        <h2 id="dayparts-title">{current.question.replace('{day}', future ? `on ${weekday(today)}` : 'today')}</h2>
-        <div className="metric-switch" role="radiogroup" aria-label="Metric">
+        <h2 id="dayparts-title">{future ? t(current.question.replace(' {day}', ' on {day}'), { day: weekday(today) }) : t(current.question.replace(' {day}', ' today'))}</h2>
+        <div className="metric-switch" role="radiogroup" aria-label={t('Metric')}>
           {METRICS.map((m) => {
             const Icon = m.icon
             const on = m.id === metric
@@ -63,10 +64,10 @@ export function DayParts({ forecast }: { forecast: Forecast; units: Units }) {
                 aria-checked={on}
                 className="metric-btn"
                 onClick={() => setMetric(m.id)}
-                title={m.label}
+                title={t(m.label)}
               >
                 <Icon size={18} weight={on ? 'fill' : 'regular'} />
-                <span className="sr-only">{m.label}</span>
+                <span className="sr-only">{t(m.label)}</span>
               </button>
             )
           })}
@@ -87,7 +88,7 @@ export function DayParts({ forecast }: { forecast: Forecast; units: Units }) {
                 {p.value == null ? '--' : round(p.value)}
                 <small>{suffix}</small>
               </p>
-              <p className="part-label">{p.label}</p>
+              <p className="part-label">{t(p.label)}</p>
             </li>
           )
         })}

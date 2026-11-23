@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { Place, Units, WindUnit } from './weather'
+import type { Lang } from './i18n'
 
 export type AlertKind = 'storm' | 'rain' | 'snow' | 'wind' | 'heat' | 'frost' | 'uv' | 'air'
 
@@ -31,6 +32,7 @@ export type Prefs = {
   photo: string | null
   alerts: Record<AlertKind, boolean>
   notify: boolean
+  lang: Lang
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -46,6 +48,7 @@ export const DEFAULT_PREFS: Prefs = {
   photo: null,
   alerts: { storm: true, rain: true, snow: true, wind: true, heat: true, frost: true, uv: true, air: true },
   notify: false,
+  lang: 'en',
 }
 
 export const unitsOf = (p: Prefs): Units => (p.temp === 'f' ? 'imperial' : 'metric')

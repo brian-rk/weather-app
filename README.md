@@ -17,6 +17,11 @@ All data is live, and the app needs **no API keys or accounts**.
 - **Weather alerts:** the bell flags thunderstorms, heavy rain, snow, strong gusts, heat, frost, very high UV and unhealthy air for the next two days, with an unread count and optional browser notifications.
 - **Plan your day:** the best time windows for a run, cycling, walking the dog, drying laundry, a barbecue and stargazing, scored from rain, wind, UV, temperature and cloud.
 - **Settings:** your name and avatar (photo or initials), units for temperature, wind and pressure, 12- or 24-hour time, start-up city, refresh interval, theme, and which alerts you get.
+- **Map layers:** a Layers menu on the map toggles animated **wind streams** (particles drifting with live wind), a **temperature** colour wash with a legend, rain radar and place names. Readings refresh for whatever area you pan to.
+- **Command palette:** press Ctrl+K (⌘K on Mac) to jump to any city, panel or setting, switch units, theme or language.
+- **Compare cities:** up to three cities side by side, with a 7-day chart (high, low, rain chance or wind), hover details and a table view.
+- **Shareable weather card:** turn today's forecast into a picture (sky, light or dark style; post or story size) to download, share or copy.
+- **Languages:** English, Español, Français, Deutsch, Português and Kiswahili, including dates, weather descriptions, alerts, the briefing and city search results.
 - **Expandable sidebar:** switch between a slim icon rail and a wider sidebar with labels.
 - **Tomorrow scene:** a traveller on a bench dressed for tomorrow's weather: umbrella for rain, sunglasses for sun, beanie and scarf for cold.
 - **Light and dark themes:** follow your device, stay light or dark, or switch to dark after sunset in the selected city. The map recolours too.
@@ -115,6 +120,8 @@ weather/
     │   ├── Conditions.tsx  # Sun, UV index, wind and pressure
     │   ├── MapCard.tsx     # MapLibre map, markers and map controls
     │   ├── useRadar.ts     # RainViewer radar layers and playback
+    │   ├── useWeatherLayers.ts # Wind-stream and temperature canvases over the map
+    │   ├── CommandPalette.tsx, ComparePanel.tsx, SharePanel.tsx
     │   ├── Header.tsx      # Avatar greeting, search, calendar, briefing and alert buttons
     │   ├── Sheet.tsx       # Shared side/bottom sheet for every panel
     │   ├── SavedPanel.tsx  # Saved cities: open, reorder, remove
@@ -129,6 +136,9 @@ weather/
     └── lib/
         ├── weather.ts      # API calls, types, weather codes and formatting
         ├── insights.ts     # Alerts, daily briefing and activity planner
+        ├── i18n.ts         # Language switching, translation and date formats
+        ├── translations.ts # Strings in Spanish, French, German, Portuguese and Swahili
+        ├── shareCard.tsx   # Draws the shareable weather picture on a canvas
         ├── prefs.ts        # Settings, unit conversion and formatting
         ├── theme.ts        # Theme resolution (system, light, dark, day and night)
         └── mapStyle.ts     # Custom map style (colours, layers, labels)

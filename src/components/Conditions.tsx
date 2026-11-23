@@ -10,6 +10,7 @@ import {
   type Forecast,
   type Units,
 } from '../lib/weather'
+import { t } from '../lib/i18n'
 
 /* ---------------------------------------------------------------- Sun */
 
@@ -21,10 +22,10 @@ function Sun({ forecast }: { forecast: Forecast }) {
   const set = minutesOfDay(d.sunset[0])
   const now = minutesOfDay(forecast.current.time)
   const up = now >= rise && now <= set
-  const t = Math.min(Math.max((now - rise) / (set - rise || 1), 0), 1)
+  const frac = Math.min(Math.max((now - rise) / (set - rise || 1), 0), 1)
 
   // Half-ellipse from (12,70) to (148,70) peaking at y=14.
-  const angle = Math.PI * (1 - t)
+  const angle = Math.PI * (1 - frac)
   const sx = 80 + 68 * Math.cos(angle)
   const sy = 70 - 56 * Math.sin(angle)
 
@@ -32,12 +33,14 @@ function Sun({ forecast }: { forecast: Forecast }) {
   const delta = d.daylight.length > 1 ? Math.round((d.daylight[1] - d.daylight[0]) / 60) : 0
   const trend =
     delta === 0
-      ? 'About the same as yesterday'
-      : `${Math.abs(delta)} min ${delta > 0 ? 'longer' : 'shorter'} than yesterday`
+      ? t('About the same as yesterday')
+      : delta > 0
+        ? t('{n} min longer than yesterday', { n: Math.abs(delta) })
+        : t('{n} min shorter than yesterday', { n: Math.abs(delta) })
 
   return (
     <div className="cond">
-      <h3>Sun</h3>
+      <h3>{t('Sun')}</h3>
       <svg viewBox="0 0 160 82" className="sun-arc" aria-hidden="true">
         <path d="M12 70 A68 56 0 0 1 148 70" className="sun-track" />
         {up && (
@@ -52,16 +55,16 @@ function Sun({ forecast }: { forecast: Forecast }) {
       </svg>
       <div className="sun-times">
         <p>
-          <small>Sunrise</small>
+          <small>{t('Sunrise')}</small>
           {clock(d.sunrise[0])}
         </p>
         <p>
-          <small>Sunset</small>
+          <small>{t('Sunset')}</small>
           {clock(d.sunset[0])}
         </p>
       </div>
       <p className="cond-note">
-        {formatDuration(d.daylight[0])} of daylight. {trend}.
+        {t('{time} of daylight.', { time: formatDuration(d.daylight[0]) })} {trend}.
       </p>
     </div>
   )
@@ -80,12 +83,12 @@ function Uv({ forecast }: { forecast: Forecast }) {
     .filter((p) => p.time.startsWith(today) && p.uv >= 3)
   const protect =
     strong.length > 0
-      ? `Protect yourself ${formatClock(strong[0].time, fmt)} to ${formatClock(`${strong.at(-1)!.time.slice(0, 11)}${String(Number(strong.at(-1)!.time.slice(11, 13)) + 1).padStart(2, '0')}:00`, fmt)}.`
+      ? t('Protect yourself {from} to {to}.', { from: formatClock(strong[0].time, fmt), to: formatClock(`${strong.at(-1)!.time.slice(0, 11)}${String(Number(strong.at(-1)!.time.slice(11, 13)) + 1).padStart(2, '0')}:00`, fmt) })
       : null
 
   return (
     <div className="cond">
-      <h3>UV index</h3>
+      <h3>{t('UV index')}</h3>
       <p className="cond-value">
         {round(uv)}
         <span>{level.label}</span>
@@ -94,7 +97,7 @@ function Uv({ forecast }: { forecast: Forecast }) {
         <span style={{ left: `${Math.min(uv / 11, 1) * 100}%` }} />
       </div>
       <p className="cond-note">
-        {protect ?? level.advice} Peak today {round(peak)}.
+        {protect ?? level.advice} {t('Peak today {n}.', { n: round(peak) })}
       </p>
     </div>
   )
@@ -108,7 +111,7 @@ function Wind({ forecast }: { forecast: Forecast; units: Units }) {
   const unit = WIND_LABEL[prefs.wind]
   return (
     <div className="cond">
-      <h3>Wind</h3>
+      <h3>{t('Wind')}</h3>
       <div className="wind-row">
         <p className="cond-value">
           {round(c.wind)}
@@ -138,9 +141,9 @@ function Wind({ forecast }: { forecast: Forecast; units: Units }) {
         </svg>
       </div>
       <p className="cond-note">
-        Blowing from the {compass(c.windDirection)}
+        {t('Blowing from the {dir}', { dir: compass(c.windDirection) })}
         <br />
-        Gusts up to {round(c.gusts)} {unit}
+        {t('Gusts up to {n} {unit}', { n: round(c.gusts), unit })}
       </p>
     </div>
   )
@@ -157,7 +160,7 @@ function Pressure({ forecast }: { forecast: Forecast; units: Units }) {
   const trend = diff > 1 ? 'Rising' : diff < -1 ? 'Falling' : 'Steady'
   const Icon = trend === 'Rising' ? ArrowUpRight : trend === 'Falling' ? ArrowDownRight : ArrowRight
   const hint =
-    trend === 'Rising' ? 'Usually means settling weather.' : trend === 'Falling' ? 'Often comes before unsettled weather.' : 'No big change expected.'
+    trend === 'Rising' ? t('Usually means settling weather.') : trend === 'Falling' ? t('Often comes before unsettled weather.') : t('No big change expected.')
 
   const lo = Math.min(...series)
   const hi = Math.max(...series)
@@ -166,12 +169,12 @@ function Pressure({ forecast }: { forecast: Forecast; units: Units }) {
 
   return (
     <div className="cond">
-      <h3>Pressure</h3>
+      <h3>{t('Pressure')}</h3>
       <p className="cond-value">
         {formatPressureIn(forecast.current.pressure, prefs.pressure)}
       </p>
       <p className={`pressure-trend is-${trend.toLowerCase()}`}>
-        <Icon size={16} weight="bold" aria-hidden="true" /> {trend} over the next 3 h
+        <Icon size={16} weight="bold" aria-hidden="true" /> {t('{trend} over the next 3 h', { trend: t(trend) })}
       </p>
       <svg viewBox="0 0 160 40" className="pressure-spark" aria-hidden="true" preserveAspectRatio="none">
         <polyline points={pts} />
@@ -185,7 +188,7 @@ export function Conditions({ forecast, units }: { forecast: Forecast; units: Uni
   return (
     <section className="conditions" aria-labelledby="conditions-title">
       <h2 id="conditions-title" className="sr-only">
-        Today's conditions
+        {t("Today's conditions")}
       </h2>
       <Sun forecast={forecast} />
       <Uv forecast={forecast} />

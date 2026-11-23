@@ -20,6 +20,7 @@ import {
   type Snapshot,
   type Units,
 } from '../lib/weather'
+import { t } from '../lib/i18n'
 
 /* ---------------------------------------------------------------- Now */
 
@@ -59,7 +60,7 @@ export function NowCard({
   // Roughly a fresh breeze (Beaufort 4) and up.
   const kmh = toKmh(c.wind, prefs.wind)
   const breezy = kmh >= 20
-  const when = future ? shortDate(c.time.slice(0, 10)) : 'Now'
+  const when = future ? shortDate(c.time.slice(0, 10)) : t('Now')
 
   return (
     <section className={`card now now--${mood}`} aria-labelledby="now-title" onPointerMove={tilt} onPointerLeave={untilt}>
@@ -84,19 +85,19 @@ export function NowCard({
           className="save-btn"
           aria-pressed={saved}
           onClick={onToggleSave}
-          title={saved ? `Remove ${place.name} from saved` : `Save ${place.name}`}
+          title={saved ? t('Remove {place} from saved', { place: place.name }) : t('Save {place}', { place: place.name })}
         >
           <Star size={18} weight={saved ? 'fill' : 'regular'} />
-          <span className="sr-only">{saved ? `Remove ${place.name} from saved cities` : `Save ${place.name}`}</span>
+          <span className="sr-only">{saved ? t('Remove {place} from saved cities', { place: place.name }) : t('Save {place}', { place: place.name })}</span>
         </button>
-        <button type="button" className="save-btn" onClick={onShare} title="Share this forecast">
+        <button type="button" className="save-btn" onClick={onShare} title={t('Share this forecast')}>
           <ShareNetwork size={18} />
-          <span className="sr-only">Share the forecast for {place.name}</span>
+          <span className="sr-only">{t('Share the forecast for {place}', { place: place.name })}</span>
         </button>
       </div>
 
       <div className="now-head">
-        <h2 id="now-title">Weather</h2>
+        <h2 id="now-title">{t('Weather')}</h2>
         <p className="muted">
           {when} · {cond.label}
         </p>
@@ -112,17 +113,17 @@ export function NowCard({
           <span>°{units === 'metric' ? 'C' : 'F'}</span>
         </p>
         <p className="muted">
-          {future ? `Low ${round(forecast.daily.min[0])}° · feels like ${round(c.feelsLike)}° at midday` : `Feels like ${round(c.feelsLike)}°`}
+          {future ? t('Low {low}° · feels like {feels}° at midday', { low: round(forecast.daily.min[0]), feels: round(c.feelsLike) }) : t('Feels like {feels}°', { feels: round(c.feelsLike) })}
         </p>
       </div>
 
       <dl className="now-stats">
         <div className="stat stat--lime">
-          <dt>Visibility</dt>
+          <dt>{t('Visibility')}</dt>
           <dd>{formatVisibility(c.visibility, units)}</dd>
         </div>
         <div className="stat">
-          <dt>Humidity</dt>
+          <dt>{t('Humidity')}</dt>
           <dd>{round(c.humidity)}%</dd>
         </div>
       </dl>
@@ -146,12 +147,12 @@ export function CityList({
   if (places.length === 0) {
     return (
       <div className="city city--empty">
-        <p>Save cities with the star on the weather card to compare them here.</p>
+        <p>{t('Save cities with the star on the weather card to compare them here.')}</p>
       </div>
     )
   }
   return (
-    <ul className="cities" aria-label="Other cities">
+    <ul className="cities" aria-label={t('Other cities')}>
       {places.map((p, i) => {
         const s = snapshots[i]
         const cond = s ? describe(s.code) : null
@@ -165,7 +166,7 @@ export function CityList({
               )}
               <span className="city-name">
                 <strong>{p.name}</strong>
-                <small>{cond?.label ?? 'Loading'}</small>
+                <small>{cond?.label ?? t('Loading')}</small>
               </span>
               <span className="city-range">
                 {s ? (
@@ -187,9 +188,9 @@ export function CityList({
 /* ---------------------------------------------------------------- Air */
 
 function pollenLevel(v: number) {
-  if (v < 10) return 'low'
-  if (v < 50) return 'moderate'
-  return 'high'
+  if (v < 10) return t('low')
+  if (v < 50) return t('moderate')
+  return t('high')
 }
 
 export function AirCard({
@@ -211,12 +212,12 @@ export function AirCard({
     <section className="card air" aria-labelledby="air-title">
       <div className="air-stars" aria-hidden="true" />
       <div className="air-copy">
-        <h2 id="air-title">Humidity</h2>
+        <h2 id="air-title">{t('Humidity')}</h2>
         {air === undefined ? (
           <span className="skeleton-line on-dark" />
         ) : (
           <>
-            <p className="air-label">{aqi === null ? 'No air sensor nearby' : `${aqiLabel(aqi)} · AQI ${aqi}`}</p>
+            <p className="air-label">{aqi === null ? t('No air sensor nearby') : `${aqiLabel(aqi)} · AQI ${aqi}`}</p>
             <p className="air-value">
               {humidity == null ? '--' : round(humidity)}
               <small>%</small>
@@ -237,7 +238,7 @@ export function AirCard({
               <dd>{fmt(air.pm10)}</dd>
             </div>
             <div>
-              <dt>Ozone</dt>
+              <dt>{t('Ozone')}</dt>
               <dd>{fmt(air.ozone)}</dd>
             </div>
             <div>
@@ -248,12 +249,12 @@ export function AirCard({
         )}
         {air?.pollen && (
           <p className="air-pollen">
-            Pollen:{' '}
+            {t('Pollen:')}{' '}
             {air.pollen.length === 0
-              ? 'none right now'
+              ? t('none right now')
               : air.pollen
                   .slice(0, 2)
-                  .map((p) => `${p.name} ${pollenLevel(p.value)}`)
+                  .map((p) => `${t(p.name)} ${pollenLevel(p.value)}`)
                   .join(', ')}
           </p>
         )}
@@ -276,7 +277,7 @@ export function TomorrowCard({ place, forecast, units }: { place: Place; forecas
     <section className={`card tomorrow ${wet ? 'tomorrow--wet' : 'tomorrow--dry'}`} aria-labelledby="tomorrow-title">
       <SkyFx sky={cond.sky} tone="lime" />
       <div className="tomorrow-head">
-        <p className="muted">{future ? `Next day, ${weekday(d.time[1])}` : `Tomorrow, ${weekday(d.time[1])}`}</p>
+        <p className="muted">{future ? t('Next day, {day}', { day: weekday(d.time[1]) }) : t('Tomorrow, {day}', { day: weekday(d.time[1]) })}</p>
         <h2 id="tomorrow-title">{place.name}</h2>
       </div>
 
@@ -290,7 +291,7 @@ export function TomorrowCard({ place, forecast, units }: { place: Place; forecas
         <p className="tomorrow-meta">
           {cond.label}
           <span>
-            <Drop size={14} aria-hidden="true" /> {d.precipitation[1] ?? 0}% chance
+            <Drop size={14} aria-hidden="true" /> {t('{n}% chance', { n: d.precipitation[1] ?? 0 })}
           </span>
         </p>
       </div>
@@ -305,11 +306,11 @@ export function ErrorCard({ message, onRetry }: { message: string; onRetry: () =
     <section className="card error-card" role="alert">
       <CloudRain size={40} weight="duotone" aria-hidden="true" />
       <div>
-        <h2>The forecast didn't load</h2>
-        <p className="muted">{message}. Your saved cities are still here.</p>
+        <h2>{t("The forecast didn't load")}</h2>
+        <p className="muted">{message}. {t('Your saved cities are still here.')}</p>
       </div>
       <button type="button" className="btn-primary" onClick={onRetry}>
-        Try again
+        {t('Try again')}
       </button>
     </section>
   )

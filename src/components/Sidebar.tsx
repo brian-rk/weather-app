@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react'
+import { t } from '../lib/i18n'
 import {
   ArrowClockwise,
+  ArrowsLeftRight,
   CalendarBlank,
   ChatCircleText,
   GearSix,
@@ -11,7 +13,7 @@ import {
   Star,
 } from '@phosphor-icons/react'
 
-export type NavId = 'dashboard' | 'briefing' | 'map' | 'calendar' | 'planner' | 'saved' | 'settings'
+export type NavId = 'dashboard' | 'briefing' | 'map' | 'calendar' | 'planner' | 'compare' | 'saved' | 'settings'
 
 const ITEMS: { id: NavId; label: string; icon: typeof Star; mobile: boolean }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: SquaresFour, mobile: true },
@@ -19,6 +21,7 @@ const ITEMS: { id: NavId; label: string; icon: typeof Star; mobile: boolean }[] 
   { id: 'map', label: 'Map', icon: MapTrifold, mobile: true },
   { id: 'calendar', label: 'Calendar', icon: CalendarBlank, mobile: false },
   { id: 'planner', label: 'Plan your day', icon: ListChecks, mobile: true },
+  { id: 'compare', label: 'Compare cities', icon: ArrowsLeftRight, mobile: false },
   { id: 'saved', label: 'Saved cities', icon: Star, mobile: true },
   { id: 'settings', label: 'Settings', icon: GearSix, mobile: true },
 ]
@@ -38,7 +41,7 @@ export function Sidebar({ active, onNav, expanded, onToggleExpanded, onRefresh, 
     0,
   )
   return (
-    <nav className={`sidebar ${expanded ? 'is-expanded' : ''}`} aria-label="Primary">
+    <nav className={`sidebar ${expanded ? 'is-expanded' : ''}`} aria-label={t('Primary')}>
       <div className="brand">
         <svg viewBox="0 0 40 32" aria-hidden="true">
           <path
@@ -73,10 +76,10 @@ export function Sidebar({ active, onNav, expanded, onToggleExpanded, onRefresh, 
                 data-panel-trigger
                 data-active={on || undefined}
                 onClick={() => onNav(item.id)}
-                title={expanded ? undefined : item.label}
+                title={expanded ? undefined : t(item.label)}
               >
                 <Icon size={20} weight={on ? 'fill' : 'regular'} />
-                <span className="side-label">{item.label}</span>
+                <span className="side-label">{t(item.label)}</span>
               </button>
             </li>
           )
@@ -84,20 +87,20 @@ export function Sidebar({ active, onNav, expanded, onToggleExpanded, onRefresh, 
       </ul>
 
       <div className="side-bottom">
-        <button type="button" className="side-btn" onClick={onRefresh} disabled={refreshing} title={expanded ? undefined : 'Refresh'}>
+        <button type="button" className="side-btn" onClick={onRefresh} disabled={refreshing} title={expanded ? undefined : t('Refresh')}>
           <ArrowClockwise size={20} className={refreshing ? 'spin' : undefined} />
-          <span className="side-label">Refresh</span>
+          <span className="side-label">{t('Refresh')}</span>
         </button>
         <button
           type="button"
           className="side-btn hide-mobile"
           onClick={onToggleExpanded}
           aria-pressed={expanded}
-          title={expanded ? undefined : 'Expand sidebar'}
+          title={expanded ? undefined : t('Expand sidebar')}
         >
           <SidebarSimple size={20} className="side-toggle-icon" />
-          <span className="side-label">Collapse</span>
-          <span className="sr-only">{expanded ? '' : 'Expand sidebar'}</span>
+          <span className="side-label">{t('Collapse')}</span>
+          <span className="sr-only">{expanded ? '' : t('Expand sidebar')}</span>
         </button>
       </div>
     </nav>

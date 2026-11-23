@@ -2,6 +2,7 @@ import { CalendarBlank } from '@phosphor-icons/react'
 import { Sheet } from './Sheet'
 import { SkyIcon } from './SkyIcon'
 import { describe, round, type Forecast } from '../lib/weather'
+import { formatDay, t } from '../lib/i18n'
 
 type Props = {
   open: boolean
@@ -12,12 +13,13 @@ type Props = {
   onSelect: (day: number) => void
 }
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+// 2024-01-01 was a Monday; format a week from there in the active language.
+const weekdays = () => Array.from({ length: 7 }, (_, i) => formatDay(`2024-01-0${i + 1}`, 'short'))
 
 function parts(iso: string) {
   const [y, m, d] = iso.split('-').map(Number)
   const date = new Date(Date.UTC(y, m - 1, d))
-  return { day: d, weekday: (date.getUTCDay() + 6) % 7, month: date.toLocaleDateString('en-GB', { month: 'long', timeZone: 'UTC' }) }
+  return { day: d, weekday: (date.getUTCDay() + 6) % 7, month: formatDay(iso, 'month') }
 }
 
 /** 16-day forecast laid out as a calendar; picking a day shows it across the dashboard. */
@@ -30,20 +32,20 @@ export function CalendarPanel({ open, onClose, side, forecast, selected, onSelec
     <Sheet
       open={open}
       onClose={onClose}
-      title="Forecast calendar"
+      title={t('Forecast calendar')}
       side={side}
       icon={<CalendarBlank size={20} weight="duotone" aria-hidden="true" />}
     >
       {!forecast ? (
-        <p className="sheet-empty">The calendar appears once the forecast has loaded.</p>
+        <p className="sheet-empty">{t('The calendar appears once the forecast has loaded.')}</p>
       ) : (
         <>
           <p className="sheet-hint">
-            {months.join(' and ')}. Pick a day to see it across the dashboard.
+            {months.join(' · ')}. {t('Pick a day to see it across the dashboard.')}
           </p>
-          <div className="cal" role="grid" aria-label="16-day forecast">
+          <div className="cal" role="grid" aria-label={t('16-day forecast')}>
             <div className="cal-head" role="row">
-              {WEEKDAYS.map((w) => (
+              {weekdays().map((w) => (
                 <span key={w} role="columnheader">
                   {w}
                 </span>
@@ -63,7 +65,7 @@ export function CalendarPanel({ open, onClose, side, forecast, selected, onSelec
                     role="gridcell"
                     className={['cal-day', i === 0 ? 'is-today' : '', i === selected ? 'is-selected' : ''].join(' ')}
                     aria-selected={i === selected}
-                    aria-label={`${iso}: ${cond.label}, high ${round(forecast.daily.max[i])}, low ${round(forecast.daily.min[i])}`}
+                    aria-label={`${formatDay(iso, 'date')}: ${cond.label}, ${t('High')} ${round(forecast.daily.max[i])}°, ${t('Low')} ${round(forecast.daily.min[i])}°`}
                     onClick={() => {
                       onSelect(i)
                       onClose()
@@ -89,7 +91,7 @@ export function CalendarPanel({ open, onClose, side, forecast, selected, onSelec
                 onClose()
               }}
             >
-              Back to today
+              {t('Back to today')}
             </button>
           )}
         </>

@@ -1,5 +1,6 @@
 import { describe, nowIndex, round, shortDate, type AirQuality, type Forecast, type Place, type Units } from './weather'
 import { formatClock, toCelsius, toKmh, WIND_LABEL, type AlertKind, type Prefs } from './prefs'
+import { t } from './i18n'
 
 /* ============================================================ Alerts */
 
@@ -28,8 +29,8 @@ export function computeAlerts(f: Forecast, air: AirQuality | null | undefined, u
   const when = (iso: string) => {
     const day = iso.slice(0, 10)
     const today = f.current.time.slice(0, 10)
-    const label = day === today ? 'today' : day === f.daily.time[1] ? 'tomorrow' : shortDate(day)
-    return `${label} from ${formatClock(iso, prefs.clock)}`
+    const label = day === today ? t('today') : day === f.daily.time[1] ? t('tomorrow') : shortDate(day)
+    return t('{day} from {time}', { day: label, time: formatClock(iso, prefs.clock) })
   }
 
   const firstHour = (test: (i: number) => boolean) => {
@@ -43,8 +44,8 @@ export function computeAlerts(f: Forecast, air: AirQuality | null | undefined, u
       id: `storm-${h.time[storm].slice(0, 10)}`,
       kind: 'storm',
       severity: 'warning',
-      title: 'Thunderstorms likely',
-      body: `Storms expected ${when(h.time[storm])}. Avoid open ground and unplug sensitive electronics.`,
+      title: t('Thunderstorms likely'),
+      body: t('Storms expected {when}. Avoid open ground and unplug sensitive electronics.', { when: when(h.time[storm]) }),
       date: h.time[storm].slice(0, 10),
     })
 
@@ -55,8 +56,8 @@ export function computeAlerts(f: Forecast, air: AirQuality | null | undefined, u
         id: `rain-${f.daily.time[d]}`,
         kind: 'rain',
         severity: mm >= 40 ? 'warning' : 'advisory',
-        title: mm >= 40 ? 'Very heavy rain' : 'Heavy rain',
-        body: `About ${round(mm)} mm of rain ${d === 0 ? 'today' : 'tomorrow'}. Expect puddles and possible local flooding.`,
+        title: mm >= 40 ? t('Very heavy rain') : t('Heavy rain'),
+        body: t('About {mm} mm of rain {day}. Expect puddles and possible local flooding.', { mm: round(mm), day: d === 0 ? t('today') : t('tomorrow') }),
         date: f.daily.time[d],
       })
   }
@@ -67,8 +68,8 @@ export function computeAlerts(f: Forecast, air: AirQuality | null | undefined, u
       id: `snow-${h.time[snow].slice(0, 10)}`,
       kind: 'snow',
       severity: 'advisory',
-      title: 'Snow on the way',
-      body: `Snow expected ${when(h.time[snow])}. Allow extra time for travel.`,
+      title: t('Snow on the way'),
+      body: t('Snow expected {when}. Allow extra time for travel.', { when: when(h.time[snow]) }),
       date: h.time[snow].slice(0, 10),
     })
 
@@ -81,20 +82,20 @@ export function computeAlerts(f: Forecast, air: AirQuality | null | undefined, u
       id: `wind-${h.time[gustAt].slice(0, 10)}`,
       kind: 'wind',
       severity: toKmh(h.gusts[gustAt], prefs.wind) >= 90 ? 'warning' : 'advisory',
-      title: 'Strong gusts',
-      body: `Gusts up to ${round(h.gusts[gustAt])} ${WIND_LABEL[prefs.wind]} around ${h.time[gustAt].slice(0, 10) === f.current.time.slice(0, 10) ? 'today' : shortDate(h.time[gustAt].slice(0, 10))} ${formatClock(h.time[gustAt], prefs.clock)}. Secure loose objects outdoors.`,
+      title: t('Strong gusts'),
+      body: t('Gusts up to {n} {unit} around {day} {time}. Secure loose objects outdoors.', { n: round(h.gusts[gustAt]), unit: WIND_LABEL[prefs.wind], day: h.time[gustAt].slice(0, 10) === f.current.time.slice(0, 10) ? t('today') : shortDate(h.time[gustAt].slice(0, 10)), time: formatClock(h.time[gustAt], prefs.clock) }),
       date: h.time[gustAt].slice(0, 10),
     })
 
   for (let d = 0; d < Math.min(3, f.daily.time.length); d++) {
-    const label = d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : shortDate(f.daily.time[d])
+    const label = d === 0 ? t('Today') : d === 1 ? t('Tomorrow') : shortDate(f.daily.time[d])
     if (toCelsius(f.daily.max[d], units) >= 35) {
       out.push({
         id: `heat-${f.daily.time[d]}`,
         kind: 'heat',
         severity: toCelsius(f.daily.max[d], units) >= 40 ? 'warning' : 'advisory',
-        title: 'Very hot',
-        body: `${label} reaches ${round(f.daily.max[d])}°. Drink water and stay out of the midday sun.`,
+        title: t('Very hot'),
+        body: t('{day} reaches {n}°. Drink water and stay out of the midday sun.', { day: label, n: round(f.daily.max[d]) }),
         date: f.daily.time[d],
       })
       break
@@ -102,13 +103,13 @@ export function computeAlerts(f: Forecast, air: AirQuality | null | undefined, u
   }
   for (let d = 0; d < Math.min(3, f.daily.time.length); d++) {
     if (toCelsius(f.daily.min[d], units) <= 0) {
-      const label = d === 0 ? 'Tonight' : d === 1 ? 'Tomorrow night' : shortDate(f.daily.time[d])
+      const label = d === 0 ? t('Tonight') : d === 1 ? t('Tomorrow night') : shortDate(f.daily.time[d])
       out.push({
         id: `frost-${f.daily.time[d]}`,
         kind: 'frost',
         severity: 'advisory',
-        title: 'Frost',
-        body: `${label} drops to ${round(f.daily.min[d])}°. Watch for icy paths and protect plants.`,
+        title: t('Frost'),
+        body: t('{day} drops to {n}°. Watch for icy paths and protect plants.', { day: label, n: round(f.daily.min[d]) }),
         date: f.daily.time[d],
       })
       break
@@ -121,8 +122,8 @@ export function computeAlerts(f: Forecast, air: AirQuality | null | undefined, u
         id: `uv-${f.daily.time[d]}`,
         kind: 'uv',
         severity: 'advisory',
-        title: 'Very high UV',
-        body: `UV reaches ${round(f.daily.uvMax[d])} ${d === 0 ? 'today' : 'tomorrow'}. Use sunscreen and seek shade at midday.`,
+        title: t('Very high UV'),
+        body: t('UV reaches {n} {day}. Use sunscreen and seek shade at midday.', { n: round(f.daily.uvMax[d]), day: d === 0 ? t('today') : t('tomorrow') }),
         date: f.daily.time[d],
       })
       break
@@ -134,8 +135,8 @@ export function computeAlerts(f: Forecast, air: AirQuality | null | undefined, u
       id: `air-${f.current.time.slice(0, 10)}`,
       kind: 'air',
       severity: air.aqi > 200 ? 'warning' : 'advisory',
-      title: 'Unhealthy air',
-      body: `Air quality index is ${air.aqi}. Limit long or intense activity outdoors.`,
+      title: t('Unhealthy air'),
+      body: t('Air quality index is {n}. Limit long or intense activity outdoors.', { n: air.aqi }),
       date: f.current.time.slice(0, 10),
     })
 
@@ -181,10 +182,10 @@ export const ACTIVITIES: Activity[] = [
     label: 'Go for a run',
     hours: 1,
     score: (h) => [
-      { score: band(h.tempC, 6, 18, 12), reason: h.tempC < 6 ? 'too cold' : 'too hot' },
-      { score: atMost(h.rain, 20, 50), reason: 'likely rain' },
-      { score: atMost(h.windKmh, 25, 25), reason: 'too windy' },
-      { score: atMost(h.uv, 6, 4), reason: 'strong sun' },
+      { score: band(h.tempC, 6, 18, 12), reason: h.tempC < 6 ? t('too cold') : t('too hot') },
+      { score: atMost(h.rain, 20, 50), reason: t('likely rain') },
+      { score: atMost(h.windKmh, 25, 25), reason: t('too windy') },
+      { score: atMost(h.uv, 6, 4), reason: t('strong sun') },
     ],
   },
   {
@@ -192,9 +193,9 @@ export const ACTIVITIES: Activity[] = [
     label: 'Go cycling',
     hours: 2,
     score: (h) => [
-      { score: band(h.tempC, 10, 24, 10), reason: h.tempC < 10 ? 'too cold' : 'too hot' },
-      { score: atMost(h.rain, 15, 40), reason: 'likely rain' },
-      { score: atMost(h.gustKmh, 30, 25), reason: 'gusty' },
+      { score: band(h.tempC, 10, 24, 10), reason: h.tempC < 10 ? t('too cold') : t('too hot') },
+      { score: atMost(h.rain, 15, 40), reason: t('likely rain') },
+      { score: atMost(h.gustKmh, 30, 25), reason: t('gusty') },
     ],
   },
   {
@@ -202,9 +203,9 @@ export const ACTIVITIES: Activity[] = [
     label: 'Walk the dog',
     hours: 1,
     score: (h) => [
-      { score: band(h.tempC, 2, 26, 10), reason: h.tempC < 2 ? 'too cold' : 'too hot' },
-      { score: atMost(h.rain, 35, 50), reason: 'likely rain' },
-      { score: atMost(h.windKmh, 35, 25), reason: 'too windy' },
+      { score: band(h.tempC, 2, 26, 10), reason: h.tempC < 2 ? t('too cold') : t('too hot') },
+      { score: atMost(h.rain, 35, 50), reason: t('likely rain') },
+      { score: atMost(h.windKmh, 35, 25), reason: t('too windy') },
     ],
   },
   {
@@ -212,11 +213,11 @@ export const ACTIVITIES: Activity[] = [
     label: 'Dry laundry outside',
     hours: 3,
     score: (h) => [
-      { score: h.isDay ? 1 : 0, reason: 'after dark' },
-      { score: atMost(h.rain, 10, 25), reason: 'rain risk' },
-      { score: atMost(h.humidity, 70, 25), reason: 'too humid' },
-      { score: band(h.windKmh, 5, 30, 10), reason: h.windKmh < 5 ? 'no breeze' : 'too windy' },
-      { score: band(h.tempC, 12, 40, 8), reason: 'too cold' },
+      { score: h.isDay ? 1 : 0, reason: t('after dark') },
+      { score: atMost(h.rain, 10, 25), reason: t('rain risk') },
+      { score: atMost(h.humidity, 70, 25), reason: t('too humid') },
+      { score: band(h.windKmh, 5, 30, 10), reason: h.windKmh < 5 ? t('no breeze') : t('too windy') },
+      { score: band(h.tempC, 12, 40, 8), reason: t('too cold') },
     ],
   },
   {
@@ -224,9 +225,9 @@ export const ACTIVITIES: Activity[] = [
     label: 'Barbecue or picnic',
     hours: 2,
     score: (h) => [
-      { score: band(h.tempC, 18, 30, 6), reason: h.tempC < 18 ? 'too cool' : 'too hot' },
-      { score: atMost(h.rain, 10, 25), reason: 'rain risk' },
-      { score: atMost(h.windKmh, 20, 15), reason: 'too windy' },
+      { score: band(h.tempC, 18, 30, 6), reason: h.tempC < 18 ? t('too cool') : t('too hot') },
+      { score: atMost(h.rain, 10, 25), reason: t('rain risk') },
+      { score: atMost(h.windKmh, 20, 15), reason: t('too windy') },
     ],
   },
   {
@@ -234,9 +235,9 @@ export const ACTIVITIES: Activity[] = [
     label: 'Stargazing',
     hours: 1,
     score: (h) => [
-      { score: h.isDay ? 0 : 1, reason: 'daylight' },
-      { score: atMost(h.cloud, 20, 40), reason: 'cloudy' },
-      { score: atMost(h.rain, 10, 30), reason: 'rain risk' },
+      { score: h.isDay ? 0 : 1, reason: t('daylight') },
+      { score: atMost(h.cloud, 20, 40), reason: t('cloudy') },
+      { score: atMost(h.rain, 10, 30), reason: t('rain risk') },
     ],
   },
 ]
@@ -297,11 +298,11 @@ export function planDay(f: Forecast, units: Units, prefs: Prefs): Plan[] {
       const common = reasons.sort((p, q) => reasons.filter((r) => r === q).length - reasons.filter((r) => r === p).length)[0]
       return {
         id: a.id,
-        label: a.label,
+        label: t(a.label),
         verdict: 'poor',
         score: bestAvg,
         window: null,
-        reason: scored.length === 0 ? 'No hours left today' : `Not great: ${common ?? 'conditions'}`,
+        reason: scored.length === 0 ? t('No hours left today') : t('Not great: {why}', { why: common ?? t('conditions') }),
       }
     }
     // Stretch the window while the next hours stay good.
@@ -311,11 +312,11 @@ export function planDay(f: Forecast, units: Units, prefs: Prefs): Plan[] {
     const endHour = `${endIso.slice(0, 11)}${String(Number(endIso.slice(11, 13)) + 1).padStart(2, '0')}:00`
     return {
       id: a.id,
-      label: a.label,
+      label: t(a.label),
       verdict: bestAvg >= 0.75 ? 'great' : 'good',
       score: bestAvg,
-      window: `${formatClock(scored[best].m.time, prefs.clock)} to ${formatClock(endHour, prefs.clock)}`,
-      reason: bestAvg >= 0.75 ? 'Good conditions' : `Fair: ${scored[best].worst.reason}`,
+      window: t('{from} to {to}', { from: formatClock(scored[best].m.time, prefs.clock), to: formatClock(endHour, prefs.clock) }),
+      reason: bestAvg >= 0.75 ? t('Good conditions') : t('Fair: {why}', { why: scored[best].worst.reason }),
     }
   })
 }
@@ -337,49 +338,49 @@ export function briefing(
   const lines: string[] = []
   const name = prefs.name.trim().split(' ')[0]
 
-  const feels = Math.abs(c.feelsLike - c.temperature) >= 3 ? `, feeling like ${round(c.feelsLike)}°` : ''
-  lines.push(`${name ? `Hi ${name}! ` : ''}It's ${round(c.temperature)}° and ${cond.label.toLowerCase()} in ${place.name} right now${feels}.`)
+  const feels = Math.abs(c.feelsLike - c.temperature) >= 3 ? t(', feeling like {n}°', { n: round(c.feelsLike) }) : ''
+  lines.push(`${name ? t('Hi {name}! ', { name }) : ''}${t("It's {temp}° and {cond} in {place} right now{feels}.", { temp: round(c.temperature), cond: cond.label.toLowerCase(), place: place.name, feels })}`)
 
   const wet = cond.sky === 'rain' || cond.sky === 'drizzle' || cond.sky === 'storm'
-  let rainLine = 'No rain expected in the next 12 hours.'
+  let rainLine = t('No rain expected in the next 12 hours.')
   for (let i = i0 + 1; i < Math.min(i0 + 13, h.time.length); i++) {
     if (wet && (h.precipitation[i] ?? 0) < 30) {
-      rainLine = `The rain should ease around ${formatClock(h.time[i], prefs.clock)}.`
+      rainLine = t('The rain should ease around {time}.', { time: formatClock(h.time[i], prefs.clock) })
       break
     }
     if (!wet && (h.precipitation[i] ?? 0) >= 50) {
-      rainLine = `Rain is likely from ${formatClock(h.time[i], prefs.clock)} (${h.precipitation[i]}% chance). Take an umbrella.`
+      rainLine = t('Rain is likely from {time} ({n}% chance). Take an umbrella.', { time: formatClock(h.time[i], prefs.clock), n: h.precipitation[i] })
       break
     }
-    if (wet) rainLine = 'Rain looks set to continue for the next 12 hours.'
+    if (wet) rainLine = t('Rain looks set to continue for the next 12 hours.')
   }
   lines.push(rainLine)
 
   const diff = (f.daily.max[1] ?? f.daily.max[0]) - f.daily.max[0]
-  const tomorrow = Math.abs(diff) < 2 ? 'similar' : diff > 0 ? `warmer (${round(f.daily.max[1])}°)` : `cooler (${round(f.daily.max[1])}°)`
-  lines.push(`Today's high is ${round(f.daily.max[0])}° and the low ${round(f.daily.min[0])}°. Tomorrow looks ${tomorrow}.`)
+  const tomorrow = Math.abs(diff) < 2 ? t('similar') : diff > 0 ? t('warmer ({n}°)', { n: round(f.daily.max[1]) }) : t('cooler ({n}°)', { n: round(f.daily.max[1]) })
+  lines.push(t("Today's high is {high}° and the low {low}°. Tomorrow looks {tomorrow}.", { high: round(f.daily.max[0]), low: round(f.daily.min[0]), tomorrow }))
 
   const gust = Math.max(...h.gusts.slice(i0, i0 + 12))
-  if (toKmh(gust, prefs.wind) >= 40) lines.push(`It'll be gusty, up to ${round(gust)} ${WIND_LABEL[prefs.wind]}.`)
+  if (toKmh(gust, prefs.wind) >= 40) lines.push(t("It'll be gusty, up to {n} {unit}.", { n: round(gust), unit: WIND_LABEL[prefs.wind] }))
 
   if ((f.daily.uvMax[0] ?? 0) >= 3) {
     const today = c.time.slice(0, 10)
     const strong = h.time.map((t, i) => ({ t, uv: h.uv[i] })).filter((p) => p.t.startsWith(today) && p.uv >= 3)
     if (strong.length) {
       const endIso = `${today}T${String(Number(strong.at(-1)!.t.slice(11, 13)) + 1).padStart(2, '0')}:00`
-      lines.push(`UV peaks at ${round(f.daily.uvMax[0])}. Protect your skin ${formatClock(strong[0].t, prefs.clock)} to ${formatClock(endIso, prefs.clock)}.`)
+      lines.push(t('UV peaks at {n}. Protect your skin {from} to {to}.', { n: round(f.daily.uvMax[0]), from: formatClock(strong[0].t, prefs.clock), to: formatClock(endIso, prefs.clock) }))
     }
   }
 
   if (air?.aqi != null) {
-    const word = air.aqi <= 50 ? 'good' : air.aqi <= 100 ? 'moderate' : 'unhealthy for some'
-    lines.push(`Air quality is ${word} (AQI ${air.aqi}).`)
+    const word = air.aqi <= 50 ? t('good') : air.aqi <= 100 ? t('moderate') : t('unhealthy for some')
+    lines.push(t('Air quality is {word} (AQI {n}).', { word, n: air.aqi }))
   }
 
   const great = plans.find((p) => p.verdict === 'great' && p.window)
-  if (great) lines.push(`Best time to ${great.label.charAt(0).toLowerCase()}${great.label.slice(1)}: ${great.window}.`)
+  if (great) lines.push(t('Best time: {activity}, {window}.', { activity: great.label, window: great.window ?? '' }))
 
-  if (alerts.length) lines.push(`Heads up: ${alerts.length === 1 ? alerts[0].title : `${alerts.length} weather alerts`}. Check the bell for details.`)
+  if (alerts.length) lines.push(t('Heads up: {what}. Check the bell for details.', { what: alerts.length === 1 ? alerts[0].title : t('{n} weather alerts', { n: alerts.length }) }))
 
   return lines
 }

@@ -1,6 +1,7 @@
 import { Drop } from '@phosphor-icons/react'
 import { SkyIcon } from './SkyIcon'
 import { describe, round, weekday, type Forecast } from '../lib/weather'
+import { t } from '../lib/i18n'
 
 export function WeekCard({
   forecast,
@@ -21,7 +22,7 @@ export function WeekCard({
   return (
     <section className="week" aria-labelledby="week-title">
       <header className="section-head">
-        <h2 id="week-title">7-day forecast</h2>
+        <h2 id="week-title">{t('7-day forecast')}</h2>
       </header>
       {/* Keyed on the data so the bars grow in again for a new place. */}
       <ol className="week-list" key={d.max.slice(0, 7).join(',')}>
@@ -29,16 +30,16 @@ export function WeekCard({
           const cond = describe(d.code[i])
           const rain = d.precipitation[i] ?? 0
           return (
-            <li key={date} className={i === selected ? 'week-row is-selected' : 'week-row'}>
+            <li key={date} className={selected > 0 && i === selected ? 'week-row is-selected' : 'week-row'}>
               <button
                 type="button"
                 className="week-hit"
                 onClick={() => onSelect?.(i === selected ? 0 : i)}
                 aria-pressed={i === selected}
               >
-                <span className="sr-only">Show {i === 0 ? 'today' : weekday(date)} on the dashboard</span>
+                <span className="sr-only">{t('Show {day} on the dashboard', { day: i === 0 ? t('today') : weekday(date) })}</span>
               </button>
-              <span className="week-day">{i === 0 ? 'Today' : weekday(date, 'short')}</span>
+              <span className="week-day">{i === 0 ? t('Today') : weekday(date, 'short')}</span>
               <span className="week-icon" title={cond.label}>
                 <SkyIcon sky={cond.sky} isDay size={22} weight="duotone" />
                 <span className="sr-only">{cond.label}</span>
@@ -52,7 +53,7 @@ export function WeekCard({
                 )}
               </span>
               <span className="week-min">
-                <span className="sr-only">Low </span>
+                <span className="sr-only">{t('Low')} </span>
                 {round(d.min[i])}°
               </span>
               <span className="week-range" aria-hidden="true">
@@ -69,7 +70,7 @@ export function WeekCard({
                 )}
               </span>
               <span className="week-max">
-                <span className="sr-only">High </span>
+                <span className="sr-only">{t('High')} </span>
                 {round(d.max[i])}°
               </span>
             </li>

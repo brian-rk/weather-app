@@ -1,5 +1,6 @@
 import { useEffect, useState, type RefObject } from 'react'
 import type * as maplibregl from 'maplibre-gl'
+import { t } from '../lib/i18n'
 
 type Frame = { time: number; path: string }
 type Status = 'off' | 'loading' | 'ready' | 'error'
@@ -114,7 +115,7 @@ export function frameLabel(frames: Frame[], i: number) {
   const f = frames[i]
   if (!last || !f) return ''
   const mins = Math.round((last.time - f.time) / 60)
-  if (mins === 0) return 'Latest'
-  if (mins < 60) return `${mins} min ago`
-  return `${Math.floor(mins / 60)} h ${mins % 60} min ago`
+  if (mins === 0) return t('Latest')
+  if (mins < 60) return t('{n} min ago', { n: mins })
+  return t('{h} h {m} min ago', { h: Math.floor(mins / 60), m: mins % 60 })
 }

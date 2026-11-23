@@ -10,6 +10,9 @@ import {
   ArrowsOut,
   CloudRain,
   Crosshair,
+  Thermometer,
+  Wind,
+  Tag,
   Minus,
   Pause,
   Play,
@@ -17,6 +20,8 @@ import {
   StackSimple,
 } from '@phosphor-icons/react'
 import { frameLabel, useRadar } from './useRadar'
+import { tempGradient, useWeatherLayers } from './useWeatherLayers'
+import { usePopover } from './usePopover'
 import { WeatherArt } from './WeatherArt'
 import { LABEL_LAYERS, applyMapColors, mapStyle } from '../lib/mapStyle'
 import {
@@ -30,6 +35,7 @@ import {
   type Snapshot,
   type Units,
 } from '../lib/weather'
+import { t } from '../lib/i18n'
 
 maplibregl.setWorkerUrl(workerUrl)
 
@@ -85,10 +91,17 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
   const [labels, setLabels] = useState(false)
   const [failed, setFailed] = useState(false)
   const [radarOn, setRadarOn] = useState(false)
+  const [windOn, setWindOn] = useState(false)
+  const [tempOn, setTempOn] = useState(false)
+  const [layersOpen, setLayersOpen] = useState(false)
+  const layersBtn = useRef<HTMLButtonElement>(null)
+  const layersMenu = usePopover<HTMLDivElement>(layersOpen, () => setLayersOpen(false), layersBtn)
   // isStyleLoaded() also turns false while tiles stream in, so track the
   // first 'load' ourselves and gate style edits on it.
   const [ready, setReady] = useState(false)
   const radar = useRadar(map, ready && radarOn)
+  const wx = useWeatherLayers(map, ready, { wind: windOn, temp: tempOn }, units, dark)
+  const toF = (c: number) => (units === 'imperial' ? (c * 9) / 5 + 32 : c)
 
   // The click handler is registered once; read the latest values through refs.
   const latest = useRef({ units, onPick })
@@ -176,7 +189,7 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
       box.setAttribute('role', 'status')
       const loading = document.createElement('p')
       loading.className = 'pick-note'
-      loading.textContent = 'Checking the weather here'
+      loading.textContent = t('Checking the weather here')
       box.append(loading)
 
       popup = new maplibregl.Popup({ maxWidth: '260px', className: 'pick-popup', offset: 10, focusAfterOpen: false })
@@ -193,16 +206,16 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
           const name = document.createElement('strong')
           name.textContent = spot.name
           const region = document.createElement('small')
-          region.textContent = spot.region || 'Selected spot'
+          region.textContent = spot.region || t('Selected spot')
           const now = document.createElement('p')
           now.className = 'pick-now'
           now.textContent = `${round(snap.temperature)}° · ${cond.label}`
           const range = document.createElement('small')
-          range.textContent = `Today ${round(snap.max)}° / ${round(snap.min)}°`
+          range.textContent = t('Today {high}° / {low}°', { high: round(snap.max), low: round(snap.min) })
           const go = document.createElement('button')
           go.type = 'button'
           go.className = 'pick-go'
-          go.textContent = 'Show forecast'
+          go.textContent = t('Show forecast')
           go.addEventListener('click', () => {
             popup?.remove()
             latest.current.onPick(spot)
@@ -214,7 +227,7 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
         })
         .catch((err: Error) => {
           if (err.name === 'AbortError') return
-          loading.textContent = "Couldn't load the weather for this spot."
+          loading.textContent = t("Couldn't load the weather for this spot.")
         })
     }
 
@@ -250,26 +263,26 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
   const cond = c ? describe(c.code) : null
 
   return (
-    <section className={`card map ${expanded ? 'map--expanded' : ''}`} aria-label={`Map around ${place.name}`}>
+    <section className={`card map ${expanded ? 'map--expanded' : ''}`} aria-label={t('Map around {place}', { place: place.name })}>
       <div ref={el} className="map-canvas" />
       <div className="map-wash" aria-hidden="true" />
 
-      {failed && <p className="map-failed">The map couldn't load. Weather data is unaffected.</p>}
+      {failed && <p className="map-failed">{t("The map couldn't load. Weather data is unaffected.")}</p>}
 
       <button type="button" className="map-fab map-expand" onClick={onToggleExpanded}>
         {expanded ? <ArrowsIn size={18} /> : <ArrowsOut size={18} />}
-        <span className="sr-only">{expanded ? 'Collapse map' : 'Expand map'}</span>
+        <span className="sr-only">{expanded ? t('Collapse map') : t('Expand map')}</span>
       </button>
 
       <div className="map-tools">
         <div className="zoom-pill">
           <button type="button" onClick={() => map.current?.zoomIn()}>
             <Plus size={16} weight="bold" />
-            <span className="sr-only">Zoom in</span>
+            <span className="sr-only">{t('Zoom in')}</span>
           </button>
           <button type="button" onClick={() => map.current?.zoomOut()}>
             <Minus size={16} weight="bold" />
-            <span className="sr-only">Zoom out</span>
+            <span className="sr-only">{t('Zoom out')}</span>
           </button>
         </div>
         <button
@@ -280,29 +293,72 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
           }
         >
           <Crosshair size={18} />
-          <span className="sr-only">Recenter on {place.name}</span>
+          <span className="sr-only">{t('Recenter on {place}', { place: place.name })}</span>
         </button>
-        <button type="button" className="map-fab" aria-pressed={labels} onClick={() => setLabels((v) => !v)} title="Place names">
-          <StackSimple size={18} weight={labels ? 'fill' : 'regular'} />
-          <span className="sr-only">Show place labels</span>
-        </button>
-        <button type="button" className="map-fab" aria-pressed={radarOn} onClick={() => setRadarOn((v) => !v)} title="Rain radar">
-          <CloudRain size={18} weight={radarOn ? 'fill' : 'regular'} />
-          <span className="sr-only">Show rain radar</span>
+        <button
+          ref={layersBtn}
+          type="button"
+          className="map-fab"
+          aria-expanded={layersOpen}
+          aria-haspopup="dialog"
+          data-on={labels || radarOn || windOn || tempOn || undefined}
+          onClick={() => setLayersOpen((v) => !v)}
+          title={t('Map layers')}
+        >
+          <StackSimple size={18} weight={layersOpen ? 'fill' : 'regular'} />
+          <span className="sr-only">{t('Map layers')}</span>
         </button>
       </div>
 
+      {layersOpen && (
+        <div ref={layersMenu} className="layers-menu" role="dialog" aria-label={t('Map layers')}>
+          {[
+            { on: windOn, set: setWindOn, icon: Wind, label: t('Wind streams') },
+            { on: tempOn, set: setTempOn, icon: Thermometer, label: t('Temperature') },
+            { on: radarOn, set: setRadarOn, icon: CloudRain, label: t('Rain radar') },
+            { on: labels, set: setLabels, icon: Tag, label: t('Place names') },
+          ].map(({ on, set, icon: Icon, label }) => (
+            <label key={label} className="layer-row">
+              <Icon size={18} weight={on ? 'fill' : 'regular'} aria-hidden="true" />
+              <span>{label}</span>
+              <input type="checkbox" role="switch" checked={on} onChange={(e) => set(e.target.checked)} />
+              <span className="toggle-track" aria-hidden="true" />
+            </label>
+          ))}
+        </div>
+      )}
+
+      {(tempOn || windOn) && (
+        <div className="wx-legend" role="status">
+          {wx.loading && !wx.tempRange && <span>{t('Loading live readings')}</span>}
+          {wx.error && <span>{t("Couldn't load readings for this area.")}</span>}
+          {tempOn && wx.tempRange && (
+            <span className="wx-temp-legend">
+              <b>{Math.round(toF(wx.tempRange[0]))}°</b>
+              <i style={{ background: tempGradient(wx.tempRange[0], wx.tempRange[1]) }} />
+              <b>{Math.round(toF(wx.tempRange[1]))}°</b>
+            </span>
+          )}
+          {windOn && wx.windMax != null && (
+            <span>
+              <Wind size={14} aria-hidden="true" /> {t('up to')} {Math.round(units === 'imperial' ? wx.windMax / 1.609 : wx.windMax)}{' '}
+              {units === 'imperial' ? 'mph' : 'km/h'}
+            </span>
+          )}
+        </div>
+      )}
+
       {radarOn ? (
-        <div className="radar-bar" role="group" aria-label="Rain radar playback">
-          {radar.status === 'loading' && <p className="radar-note">Loading radar</p>}
-          {radar.status === 'error' && <p className="radar-note">Radar is unavailable right now.</p>}
+        <div className="radar-bar" role="group" aria-label={t('Rain radar playback')}>
+          {radar.status === 'loading' && <p className="radar-note">{t('Loading radar')}</p>}
+          {radar.status === 'error' && <p className="radar-note">{t('Radar is unavailable right now.')}</p>}
           {radar.status === 'ready' && (
             <>
               <button
                 type="button"
                 className="radar-play"
                 onClick={() => radar.setPlaying((p) => !p)}
-                aria-label={radar.playing ? 'Pause radar' : 'Play the last two hours'}
+                aria-label={radar.playing ? t('Pause radar') : t('Play the last two hours')}
               >
                 {radar.playing ? <Pause size={16} weight="fill" /> : <Play size={16} weight="fill" />}
               </button>
@@ -316,13 +372,13 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
                     radar.setPlaying(false)
                     radar.setIndex(Number(e.target.value))
                   }}
-                  aria-label="Radar time"
+                  aria-label={t('Radar time')}
                   aria-valuetext={frameLabel(radar.frames, radar.index)}
                 />
                 <p className="radar-meta">
                   <span>{frameLabel(radar.frames, radar.index)}</span>
                   <span className="radar-legend" aria-hidden="true">
-                    Light <i /> Heavy
+                    {t('Light')} <i /> {t('Heavy')}
                   </span>
                 </p>
               </div>

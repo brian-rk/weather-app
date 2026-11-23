@@ -3,6 +3,7 @@ import { CaretDown, CaretUp, DotsSixVertical, Star, Trash } from '@phosphor-icon
 import { SkyIcon } from './SkyIcon'
 import { Sheet } from './Sheet'
 import { describe, fetchSnapshots, round, type Place, type Snapshot, type Units } from '../lib/weather'
+import { t } from '../lib/i18n'
 
 export const MAX_SAVED = 12
 
@@ -47,7 +48,7 @@ export function SavedPanel({ open, onClose, side, saved, current, units, onOpenP
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="Saved cities" side={side}>
+    <Sheet open={open} onClose={onClose} title={t('Saved cities')} side={side}>
 
       {!isSaved && (
         <button
@@ -59,19 +60,19 @@ export function SavedPanel({ open, onClose, side, saved, current, units, onOpenP
         >
           <Star size={18} weight="fill" aria-hidden="true" />
           <span>
-            Save {current.name}
-            {full && <small>You can save up to {MAX_SAVED}. Remove one first.</small>}
+            {t('Save {place}', { place: current.name })}
+            {full && <small>{t('You can save up to {n}. Remove one first.', { n: MAX_SAVED })}</small>}
           </span>
         </button>
       )}
 
       {saved.length === 0 ? (
         <p className="sheet-empty">
-          No saved cities yet. Save the city you're viewing with the star on its card, or from here.
+          {t("No saved cities yet. Save the city you're viewing with the star on its card, or from here.")}
         </p>
       ) : (
         <>
-          <p className="sheet-hint">Drag to reorder. The first two appear on the dashboard.</p>
+          <p className="sheet-hint">{t('Drag to reorder. The first two appear on the dashboard.')}</p>
           <ol className="saved-list">
             {saved.map((p, i) => {
               const s = snaps[p.id]
@@ -117,7 +118,7 @@ export function SavedPanel({ open, onClose, side, saved, current, units, onOpenP
                     aria-current={p.id === current.id ? 'true' : undefined}
                   >
                     <strong>{p.name}</strong>
-                    <small>{p.region || 'Saved spot'}</small>
+                    <small>{p.region || t('Saved spot')}</small>
                   </button>
                   <span className="saved-now">
                     {s && cond ? (
@@ -132,7 +133,7 @@ export function SavedPanel({ open, onClose, side, saved, current, units, onOpenP
                   <span className="saved-actions">
                     <button type="button" className="icon-btn" onClick={() => move(i, i - 1)} disabled={i === 0}>
                       <CaretUp size={16} />
-                      <span className="sr-only">Move {p.name} up</span>
+                      <span className="sr-only">{t('Move {place} up', { place: p.name })}</span>
                     </button>
                     <button
                       type="button"
@@ -141,7 +142,7 @@ export function SavedPanel({ open, onClose, side, saved, current, units, onOpenP
                       disabled={i === saved.length - 1}
                     >
                       <CaretDown size={16} />
-                      <span className="sr-only">Move {p.name} down</span>
+                      <span className="sr-only">{t('Move {place} down', { place: p.name })}</span>
                     </button>
                     <button
                       type="button"
@@ -149,7 +150,7 @@ export function SavedPanel({ open, onClose, side, saved, current, units, onOpenP
                       onClick={() => onChange(saved.filter((x) => x.id !== p.id))}
                     >
                       <Trash size={16} />
-                      <span className="sr-only">Remove {p.name}</span>
+                      <span className="sr-only">{t('Remove {place}', { place: p.name })}</span>
                     </button>
                   </span>
                 </li>

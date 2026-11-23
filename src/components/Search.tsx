@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Crosshair, MagnifyingGlass, MapPin, X } from '@phosphor-icons/react'
 import { searchPlaces, type Place } from '../lib/weather'
+import { t } from '../lib/i18n'
 
 type Status = 'idle' | 'loading' | 'done' | 'error'
 
@@ -77,7 +78,7 @@ export function Search({
   return (
     <div className="search" ref={wrapRef}>
       <label htmlFor={`${listId}-input`} className="sr-only">
-        Search for a city
+        {t('Search for a city')}
       </label>
       <input
         ref={inputRef}
@@ -90,7 +91,7 @@ export function Search({
         aria-activedescendant={showPanel && results[active] ? `${listId}-${active}` : undefined}
         autoComplete="off"
         spellCheck={false}
-        placeholder="Search a city"
+        placeholder={t('Search a city')}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value)
@@ -124,7 +125,7 @@ export function Search({
           }}
         >
           <X size={16} />
-          <span className="sr-only">Clear search</span>
+          <span className="sr-only">{t('Clear search')}</span>
         </button>
       ) : (
         <span className="search-icon" aria-hidden="true">
@@ -133,14 +134,14 @@ export function Search({
       )}
 
       {onLocate && (
-        <button type="button" className="search-locate" onClick={onLocate} disabled={locating} title="Use my location">
+        <button type="button" className="search-locate" onClick={onLocate} disabled={locating} title={t('Use my location')}>
           <Crosshair size={17} className={locating ? 'spin' : undefined} />
-          <span className="sr-only">Use my location</span>
+          <span className="sr-only">{t('Use my location')}</span>
         </button>
       )}
 
       {showPanel && (
-        <div className="search-panel" id={listId} role="listbox" aria-label="Matching places">
+        <div className="search-panel" id={listId} role="listbox" aria-label={t('Matching places')}>
           {status === 'loading' && results.length === 0 && (
             <div className="search-note">
               <span className="skeleton-line" />
@@ -148,10 +149,10 @@ export function Search({
             </div>
           )}
           {status === 'error' && (
-            <p className="search-note">Couldn't reach the place search. Check your connection.</p>
+            <p className="search-note">{t("Couldn't reach the place search. Check your connection.")}</p>
           )}
           {status === 'done' && results.length === 0 && (
-            <p className="search-note">No places match "{trimmed}". Try a nearby larger city.</p>
+            <p className="search-note">{t('No places match "{q}". Try a nearby larger city.', { q: trimmed })}</p>
           )}
           {results.map((p, i) => (
             <div

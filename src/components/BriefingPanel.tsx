@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ChatCircleText } from '@phosphor-icons/react'
 import { Sheet } from './Sheet'
+import { t } from '../lib/i18n'
 
 type Props = {
   open: boolean
@@ -40,11 +41,11 @@ export function BriefingPanel({ open, onClose, side, lines, placeName }: Props) 
     <Sheet
       open={open}
       onClose={onClose}
-      title="Daily briefing"
+      title={t('Daily briefing')}
       side={side}
       icon={<ChatCircleText size={20} weight="duotone" aria-hidden="true" />}
     >
-      <p className="sheet-hint">Nimbus on {placeName}, generated from the latest forecast.</p>
+      <p className="sheet-hint">{t('Nimbus on {place}, generated from the latest forecast.', { place: placeName })}</p>
       <ol className="chat" aria-live="polite">
         {lines.slice(0, shown).map((line, i) => (
           <li key={`${i}-${line}`} className="chat-msg">
@@ -53,7 +54,7 @@ export function BriefingPanel({ open, onClose, side, lines, placeName }: Props) 
           </li>
         ))}
         {typing && (
-          <li className="chat-msg chat-typing" aria-label="Writing">
+          <li className="chat-msg chat-typing" aria-label={t('Writing')}>
             <p>
               <span />
               <span />

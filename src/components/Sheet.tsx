@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import { X } from '@phosphor-icons/react'
 import { usePopover } from './usePopover'
+import { t } from '../lib/i18n'
 
 type Props = {
   open: boolean
@@ -33,7 +34,7 @@ export function Sheet({ open, onClose, title, side = 'left', icon, children, cla
         </h2>
         <button type="button" className="icon-btn" onClick={onClose}>
           <X size={18} />
-          <span className="sr-only">Close {title.toLowerCase()}</span>
+          <span className="sr-only">{t('Close')} {title.toLowerCase()}</span>
         </button>
       </header>
       <div className="sheet-body">{children}</div>

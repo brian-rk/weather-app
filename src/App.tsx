@@ -15,6 +15,29 @@ import { SettingsPanel } from './components/SettingsPanel'
 import { AirCard, CityList, ErrorCard, NowCard, TomorrowCard } from './components/Cards'
 import { useTheme, type ThemeSetting } from './lib/theme'
 import { DEFAULT_PREFS, PrefsContext, unitsOf, type Prefs } from './lib/prefs'
+import { detectLang, setLang, t } from './lib/i18n'
+import { SharePanel } from './components/SharePanel'
+import { ComparePanel } from './components/ComparePanel'
+import { CommandPalette, type Command } from './components/CommandPalette'
+import {
+  ArrowClockwise,
+  ArrowsLeftRight,
+  BellSimple,
+  CalendarBlank,
+  ChatCircleText,
+  Crosshair,
+  GearSix,
+  ListChecks,
+  MapTrifold,
+  Moon,
+  ShareNetwork,
+  SidebarSimple,
+  Star,
+  Sun,
+  Thermometer,
+  Translate,
+} from '@phosphor-icons/react'
+import { LANGUAGES } from './lib/i18n'
 import { briefing, computeAlerts, planDay } from './lib/insights'
 import {
   DEFAULT_PLACE,
@@ -40,7 +63,7 @@ const MapCard = lazy(() => import('./components/MapCard').then((m) => ({ default
 
 const STALE_ON_RETURN_MS = 10 * 60 * 1000
 
-type PanelId = 'briefing' | 'calendar' | 'alerts' | 'planner' | 'saved' | 'settings'
+type PanelId = 'briefing' | 'calendar' | 'alerts' | 'planner' | 'compare' | 'share' | 'saved' | 'settings'
 type Panel = { id: PanelId; side: 'left' | 'right' } | null
 
 function readStored<T>(key: string): T | null {
@@ -98,6 +121,7 @@ export default function App() {
   const [rawPrefs, setPrefs] = usePersisted<Prefs>('nimbus.prefs', () => ({
     ...DEFAULT_PREFS,
     temp: readStored<Units>('nimbus.units') === 'imperial' ? 'f' : 'c',
+    lang: detectLang(),
   }))
   const prefs = useMemo<Prefs>(
     () => ({ ...DEFAULT_PREFS, ...rawPrefs, alerts: { ...DEFAULT_PREFS.alerts, ...rawPrefs.alerts } }),
@@ -107,6 +131,7 @@ export default function App() {
     if (fromUrl.units) setPrefs((p) => ({ ...p, temp: fromUrl.units === 'imperial' ? 'f' : 'c' }))
   }, [fromUrl, setPrefs])
   const units = unitsOf(prefs)
+  setLang(prefs.lang)
 
   const startPlace = fromUrl.place ?? (prefs.startWith === 'home' ? prefs.home : null)
   const [place, setPlace] = usePersisted<Place>('nimbus.place', DEFAULT_PLACE, startPlace)
@@ -132,6 +157,7 @@ export default function App() {
   const [day, setDay] = useState(0)
   const [bellRing, setBellRing] = useState(0)
   const [greeting] = useState(greetingFor)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const contentRef = useRef<HTMLElement>(null)
 
   const base = forecastState?.key === key ? forecastState.data : null
@@ -228,6 +254,18 @@ export default function App() {
     if (window.location.search !== next) window.history.replaceState(null, '', next)
   }, [place, units])
 
+  // Ctrl/⌘+K opens the command palette from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   useEffect(() => {
     if (!notice) return
     const t = window.setTimeout(() => setNotice(null), 5000)
@@ -289,16 +327,16 @@ export default function App() {
   const toggleSave = () => {
     if (isSaved) {
       setSaved((list) => list.filter((p) => p.id !== place.id))
-      setNotice(`Removed ${place.name} from saved cities.`)
+      setNotice(t('Removed {place} from saved cities.', { place: place.name }))
     } else if (saved.length >= MAX_SAVED) {
-      setNotice(`You can save up to ${MAX_SAVED} cities. Remove one from Saved first.`)
+      setNotice(t('You can save up to {n} cities. Remove one from Saved first.', { n: MAX_SAVED }))
     } else {
       setSaved((list) => [...list, place])
-      setNotice(`Saved ${place.name}.`)
+      setNotice(t('Saved {place}.', { place: place.name }))
     }
   }
 
-  const share = async () => {
+  const copyLink = async () => {
     const url = `${window.location.origin}${window.location.pathname}${placeToSearch(place, units)}`
     const touch = window.matchMedia('(pointer: coarse)').matches
     try {
@@ -307,16 +345,16 @@ export default function App() {
         return
       }
       await navigator.clipboard.writeText(url)
-      setNotice(`Link to ${place.name} copied.`)
+      setNotice(t('Link to {place} copied.', { place: place.name }))
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
-      setNotice(`Couldn't copy automatically. The address bar has the link to ${place.name}.`)
+      setNotice(t("Couldn't copy automatically. The address bar has the link to {place}.", { place: place.name }))
     }
   }
 
   const locate = () => {
     if (!('geolocation' in navigator)) {
-      setNotice('Location is not available in this browser.')
+      setNotice(t('Location is not available in this browser.'))
       return
     }
     setLocating(true)
@@ -327,7 +365,7 @@ export default function App() {
         setLocating(false)
         select({
           id: `geo-${latitude.toFixed(2)},${longitude.toFixed(2)}`,
-          name: spot?.name ?? 'Your location',
+          name: spot?.name ?? t('Your location'),
           region: spot?.region ?? '',
           latitude,
           longitude,
@@ -335,21 +373,46 @@ export default function App() {
       },
       () => {
         setLocating(false)
-        setNotice('Location permission was denied. Search for your city instead.')
+        setNotice(t('Location permission was denied. Search for your city instead.'))
       },
       { timeout: 10000, maximumAge: 600000 },
     )
   }
 
-  const status = loading ? (base ? 'Updating' : 'Loading') : updatedAt ? `Updated ${timeAgo(now - updatedAt)}` : ''
+  const commands: Command[] = [
+    { id: 'briefing', label: t('Daily briefing'), keywords: 'summary chat', icon: <ChatCircleText size={18} />, run: () => setPanel({ id: 'briefing', side: 'right' }) },
+    { id: 'calendar', label: t('Forecast calendar'), keywords: 'days week future', icon: <CalendarBlank size={18} />, run: () => setPanel({ id: 'calendar', side: 'right' }) },
+    { id: 'alerts', label: t('Weather alerts'), keywords: 'warnings bell', icon: <BellSimple size={18} />, run: () => setPanel({ id: 'alerts', side: 'right' }) },
+    { id: 'planner', label: t('Plan your day'), keywords: 'activities run laundry', icon: <ListChecks size={18} />, run: () => setPanel({ id: 'planner', side: 'left' }) },
+    { id: 'compare', label: t('Compare cities'), keywords: 'side by side chart', icon: <ArrowsLeftRight size={18} />, run: () => setPanel({ id: 'compare', side: 'left' }) },
+    { id: 'saved', label: t('Saved cities'), keywords: 'favourites', icon: <Star size={18} />, run: () => setPanel({ id: 'saved', side: 'left' }) },
+    { id: 'share', label: t('Share this forecast'), keywords: 'picture image card link', icon: <ShareNetwork size={18} />, run: () => setPanel({ id: 'share', side: 'right' }) },
+    { id: 'settings', label: t('Settings'), keywords: 'preferences units profile', icon: <GearSix size={18} />, run: () => setPanel({ id: 'settings', side: 'left' }) },
+    { id: 'map', label: mapExpanded ? t('Collapse map') : t('Expand map'), keywords: 'map', icon: <MapTrifold size={18} />, run: toggleMap },
+    { id: 'locate', label: t('Use my location'), keywords: 'gps here', icon: <Crosshair size={18} />, run: locate },
+    { id: 'refresh', label: t('Refresh forecast'), keywords: 'reload update', icon: <ArrowClockwise size={18} />, run: () => setNonce((n) => n + 1) },
+    { id: 'units', label: units === 'metric' ? t('Switch to °F') : t('Switch to °C'), keywords: 'fahrenheit celsius units', icon: <Thermometer size={18} />, run: () => setPrefs((p) => ({ ...p, temp: p.temp === 'c' ? 'f' : 'c' })) },
+    { id: 'theme', label: dark ? t('Switch to light theme') : t('Switch to dark theme'), keywords: 'dark light mode appearance', icon: dark ? <Sun size={18} /> : <Moon size={18} />, run: () => setTheme(dark ? 'light' : 'dark') },
+    { id: 'sidebar', label: sidebarOpen ? t('Collapse sidebar') : t('Expand sidebar'), keywords: 'menu', icon: <SidebarSimple size={18} />, run: () => setSidebarOpen((v) => !v) },
+    ...(day > 0 ? [{ id: 'today', label: t('Back to today'), icon: <CalendarBlank size={18} />, run: () => transition(() => setDay(0)) }] : []),
+    ...LANGUAGES.filter((l) => l.id !== prefs.lang).map((l) => ({
+      id: `lang-${l.id}`,
+      label: t('Language: {name}', { name: l.label }),
+      keywords: 'language translate idioma langue sprache lugha',
+      icon: <Translate size={18} />,
+      run: () => setPrefs((p) => ({ ...p, lang: l.id })),
+    })),
+  ]
+
+  const status = loading ? (base ? t('Updating') : t('Loading')) : updatedAt ? t('Updated {ago}', { ago: timeAgo(now - updatedAt) }) : ''
   const active: NavId =
     panel && panel.side === 'left' && panel.id !== 'alerts' ? (panel.id as NavId) : mapExpanded ? 'map' : 'dashboard'
   const viewKey = `${key}|${day}`
-  const dayLabel = day === 0 || !forecast ? 'the rest of today' : shortDate(forecast.current.time.slice(0, 10))
+  const dayLabel = day === 0 || !forecast ? t('the rest of today') : shortDate(forecast.current.time.slice(0, 10))
 
   return (
     <PrefsContext.Provider value={prefs}>
-      <div className={`shell ${sidebarOpen ? 'has-wide-rail' : ''}`}>
+      <div key={prefs.lang} className={`shell ${sidebarOpen ? 'has-wide-rail' : ''}`}>
         <Sidebar
           active={active}
           onNav={onNav}
@@ -387,6 +450,34 @@ export default function App() {
           onMarkAllRead={() => setSeenAlerts((s) => [...new Set([...s, ...alerts.map((a) => a.id)])])}
           onOpenSettings={() => setPanel({ id: 'settings', side: panel?.side ?? 'right' })}
         />
+        <ComparePanel
+          open={panel?.id === 'compare'}
+          side={panel?.side}
+          onClose={closePanel}
+          place={place}
+          saved={saved}
+          units={units}
+          onOpenPlace={(p) => {
+            select(p)
+            closePanel()
+          }}
+        />
+        <SharePanel
+          open={panel?.id === 'share'}
+          side={panel?.side}
+          onClose={closePanel}
+          place={place}
+          forecast={forecast}
+          units={units}
+          onCopyLink={copyLink}
+        />
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          commands={commands}
+          saved={saved}
+          onPickPlace={select}
+        />
         <PlannerPanel open={panel?.id === 'planner'} side={panel?.side} onClose={closePanel} plans={plans} dayLabel={dayLabel} />
         <SettingsPanel
           open={panel?.id === 'settings'}
@@ -413,6 +504,7 @@ export default function App() {
             bellRing={bellRing}
             open={panel?.side === 'right' ? panel.id : null}
             onOpen={(id) => openPanel(id, 'right')}
+            onPalette={() => setPaletteOpen(true)}
           />
 
           {notice && (
@@ -423,10 +515,10 @@ export default function App() {
           {day > 0 && forecast && (
             <p className="day-banner" role="status">
               <span>
-                Viewing <strong>{shortDate(forecast.current.time.slice(0, 10))}</strong>
+                {t('Viewing')} <strong>{shortDate(forecast.current.time.slice(0, 10))}</strong>
               </span>
               <button type="button" className="btn-ghost btn-ghost--small" onClick={() => transition(() => setDay(0))}>
-                Back to today
+                {t('Back to today')}
               </button>
             </p>
           )}
@@ -443,7 +535,7 @@ export default function App() {
                     units={units}
                     saved={isSaved}
                     onToggleSave={toggleSave}
-                    onShare={share}
+                    onShare={() => setPanel({ id: 'share', side: 'right' })}
                   />
                 </div>
               ) : (
@@ -525,8 +617,8 @@ export default function App() {
           </div>
 
           <footer className="credit">
-            Forecast data by <a href="https://open-meteo.com/">Open-Meteo</a>
-            {error && base && <span> · Last refresh failed, showing earlier data</span>}
+            {t('Forecast data by')} <a href="https://open-meteo.com/">Open-Meteo</a>
+            {error && base && <span> · {t('Last refresh failed, showing earlier data')}</span>}
           </footer>
         </main>
       </div>
