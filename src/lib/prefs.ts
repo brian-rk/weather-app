@@ -33,6 +33,8 @@ export type Prefs = {
   alerts: Record<AlertKind, boolean>
   notify: boolean
   lang: Lang
+  /** Animated sky behind the dashboard. */
+  sky: boolean
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -49,6 +51,7 @@ export const DEFAULT_PREFS: Prefs = {
   alerts: { storm: true, rain: true, snow: true, wind: true, heat: true, frost: true, uv: true, air: true },
   notify: false,
   lang: 'en',
+  sky: true,
 }
 
 export const unitsOf = (p: Prefs): Units => (p.temp === 'f' ? 'imperial' : 'metric')

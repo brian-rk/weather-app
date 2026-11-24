@@ -977,3 +977,249 @@
   height: 96px;
   margin-bottom: 4px;
 }
+
+/* ------------------------------------------------- 11. Page-turn calendar */
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cal-month {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-weight: 600;
+  text-align: center;
+}
+.cal-month small {
+  font-size: 0.75rem;
+  font-weight: 450;
+  color: var(--ink-3);
+}
+.cal-book {
+  position: relative;
+  perspective: 1600px;
+  perspective-origin: 0 50%;
+}
+.cal-page {
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: 0 10px 24px -18px oklch(0.2 0.04 260 / 0.45);
+}
+/* The page that turns sits exactly over the one underneath. */
+.cal-page--flap {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 50%;
+  backface-visibility: hidden;
+  pointer-events: none;
+}
+.cal-page--flap::after {
+  /* Shading that deepens as the page lifts. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, oklch(0 0 0 / 0.18), transparent 35%, oklch(1 0 0 / 0.25) 80%, oklch(0 0 0 / 0.1));
+  opacity: 0;
+  animation: page-shade 720ms ease-in-out both;
+}
+.cal-page--turn-next {
+  animation: page-away 720ms cubic-bezier(0.45, 0.05, 0.35, 1) both;
+}
+.cal-page--turn-prev {
+  animation: page-back 720ms cubic-bezier(0.45, 0.05, 0.35, 1) both;
+}
+/* The page under the turning one dims, as if in its shadow. */
+.cal-page--under {
+  animation: page-under 720ms ease-in-out both;
+}
+.cal-page .cal-day {
+  animation: none;
+}
+@keyframes page-away {
+  0% {
+    transform: rotateY(0deg);
+  }
+  50% {
+    transform: rotateY(-95deg) skewY(-3deg);
+  }
+  100% {
+    transform: rotateY(-180deg);
+  }
+}
+@keyframes page-back {
+  0% {
+    transform: rotateY(-180deg);
+  }
+  50% {
+    transform: rotateY(-85deg) skewY(3deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+@keyframes page-shade {
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes page-under {
+  0%,
+  100% {
+    filter: none;
+  }
+  45% {
+    filter: brightness(0.9);
+  }
+}
+
+/* ------------------------------------------------- 12. 3D sky backdrop */
+@property --sky-top {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --sky-mid {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ffffff;
+}
+@property --sky-low {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ffffff;
+}
+.shell.has-sky {
+  background: transparent;
+  position: relative;
+  isolation: isolate;
+}
+.shell.has-sky > .main {
+  position: relative;
+  z-index: 1;
+}
+.shell.has-sky > .sidebar {
+  z-index: 2;
+}
+.sky-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 42%, var(--sky-low) 78%, var(--surface) 100%);
+  transition:
+    --sky-top 1600ms ease,
+    --sky-mid 1600ms ease,
+    --sky-low 1600ms ease;
+  perspective: 900px;
+}
+.sky-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    38vmax 30vmax at var(--glow-x) var(--glow-y),
+    var(--glow),
+    transparent 70%
+  );
+  transition: background 1600ms ease;
+}
+.sky-stars {
+  position: absolute;
+  inset: 0;
+  opacity: var(--stars);
+  transition: opacity 1600ms ease;
+}
+.sky-stars i {
+  position: absolute;
+  border-radius: 50%;
+  background: oklch(0.98 0.02 250);
+  box-shadow: 0 0 4px oklch(0.98 0.02 250 / 0.8);
+  animation: twinkle 3.6s ease-in-out infinite;
+}
+:root:not([data-theme='dark']) .sky-stars i {
+  background: oklch(0.7 0.05 260);
+  box-shadow: none;
+}
+.sky-depth {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  opacity: var(--clouds);
+  transition: opacity 1600ms ease;
+}
+.sky-layer-clouds {
+  position: absolute;
+  inset: -10% -20% 30% -20%;
+  transition: translate 900ms var(--ease-out);
+}
+/* Three depths: far clouds are small, soft and slow; near ones bigger, sharper and faster. */
+.sky-layer-clouds--0 {
+  transform: translateZ(-500px) scale(1.55);
+  translate: calc(var(--mx, 0) * -8px) calc(var(--my, 0) * -5px);
+  --drift: 190s;
+  --blur: 14px;
+  --alpha: 0.5;
+}
+.sky-layer-clouds--1 {
+  transform: translateZ(-220px) scale(1.25);
+  translate: calc(var(--mx, 0) * -20px) calc(var(--my, 0) * -10px);
+  --drift: 130s;
+  --blur: 9px;
+  --alpha: 0.62;
+}
+.sky-layer-clouds--2 {
+  transform: translateZ(0);
+  translate: calc(var(--mx, 0) * -40px) calc(var(--my, 0) * -18px);
+  --drift: 85s;
+  --blur: 5px;
+  --alpha: 0.72;
+}
+.sky-cloud {
+  position: absolute;
+  left: 0;
+  aspect-ratio: 3 / 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side at 30% 60%, oklch(1 0 0 / var(--alpha)), transparent),
+    radial-gradient(closest-side at 55% 40%, oklch(1 0 0 / var(--alpha)), transparent),
+    radial-gradient(closest-side at 78% 62%, oklch(1 0 0 / calc(var(--alpha) * 0.85)), transparent);
+  filter: blur(var(--blur));
+  animation: sky-drift var(--drift) linear infinite;
+}
+:root[data-theme='dark'] .sky-cloud {
+  background:
+    radial-gradient(closest-side at 30% 60%, oklch(0.45 0.03 260 / calc(var(--alpha) * 0.55)), transparent),
+    radial-gradient(closest-side at 55% 40%, oklch(0.5 0.03 260 / calc(var(--alpha) * 0.55)), transparent),
+    radial-gradient(closest-side at 78% 62%, oklch(0.45 0.03 260 / calc(var(--alpha) * 0.45)), transparent);
+}
+.sky-backdrop.is-wet .sky-cloud {
+  filter: blur(var(--blur)) saturate(0.4) brightness(0.92);
+}
+@keyframes sky-drift {
+  from {
+    transform: translateX(-35vw);
+  }
+  to {
+    transform: translateX(135vw);
+  }
+}
+
+/* Open sections that used to sit on white now sit on the sky; keep them readable. */
+.shell.has-sky .dayparts,
+.shell.has-sky .hourly {
+  border-radius: var(--r-xl);
+  background: color-mix(in oklch, var(--surface) 72%, transparent);
+  backdrop-filter: blur(6px);
+}
+.shell.has-sky .dayparts {
+  padding: 16px 14px 10px 18px;
+}
+.shell.has-sky .hourly {
+  padding: 16px 14px 6px 18px;
+}

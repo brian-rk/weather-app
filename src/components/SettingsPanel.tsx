@@ -280,6 +280,21 @@ export function SettingsPanel({ open, onClose, side, prefs, onChange, theme, onT
         </div>
       </Section>
 
+      <Section title={t('Background')}>
+        <ul className="toggles">
+          <li>
+            <label className="toggle">
+              <span>
+                {t('Animated sky')}
+                <small>{t('The sky behind the dashboard follows the time of day in the selected city.')}</small>
+              </span>
+              <input type="checkbox" role="switch" checked={prefs.sky} onChange={(e) => set('sky', e.target.checked)} />
+              <span className="toggle-track" aria-hidden="true" />
+            </label>
+          </li>
+        </ul>
+      </Section>
+
       <Section title={t('Alerts')}>
         <ul className="toggles">
           {ALERT_KINDS.map((k) => (

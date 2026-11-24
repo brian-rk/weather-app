@@ -17,6 +17,7 @@ import { useTheme, type ThemeSetting } from './lib/theme'
 import { DEFAULT_PREFS, PrefsContext, unitsOf, type Prefs } from './lib/prefs'
 import { detectLang, setLang, t } from './lib/i18n'
 import { SharePanel } from './components/SharePanel'
+import { SkyBackdrop } from './components/SkyBackdrop'
 import { ComparePanel } from './components/ComparePanel'
 import { CommandPalette, type Command } from './components/CommandPalette'
 import {
@@ -421,7 +422,8 @@ export default function App() {
 
   return (
     <PrefsContext.Provider value={prefs}>
-      <div key={prefs.lang} className={`shell ${sidebarOpen ? 'has-wide-rail' : ''}`}>
+      <div key={prefs.lang} className={`shell ${sidebarOpen ? 'has-wide-rail' : ''} ${prefs.sky ? 'has-sky' : ''}`}>
+        {prefs.sky && <SkyBackdrop forecast={base} dark={dark} />}
         <Sidebar
           active={active}
           onNav={onNav}

@@ -50,7 +50,7 @@ All data is live, and the app needs **no API keys, accounts or server**.
 
 ### Panels and tools
 
-- **Forecast calendar:** 16 days laid out as a calendar. Pick a day and the whole dashboard shows it, with a "Back to today" banner.
+- **Forecast calendar:** 16 days laid out as a paper calendar, two weeks per page. Turn the page with the arrows (or Page Up / Page Down) and it curls over like paper. Pick a day and the whole dashboard shows it, with a "Back to today" banner.
 - **Daily briefing:** a chat-style summary in plain language: rain timing, highs and lows, gusts, UV, air quality, the best activity window and any alerts.
 - **Weather alerts:** the bell flags thunderstorms, heavy rain, snow, strong gusts, heat, frost, very high UV and unhealthy air for the next two days.
   - Unread count.
@@ -74,6 +74,7 @@ All data is live, and the app needs **no API keys, accounts or server**.
   - Pressure: hPa or inHg.
   - Time: 12- or 24-hour.
 - **Start-up:** open with the last city viewed or a home city, and refresh automatically every 5, 15 or 30 minutes (or never). "Updated 5 min ago" shows how fresh the data is.
+- **Animated sky:** a sky behind the dashboard that follows the selected city's local time: colours for night, dawn, day and dusk, a sun or moon glow at the right height, stars at night, and three depths of drifting clouds that match the cloud cover and shift with your pointer. Turn it off in Settings.
 - **Themes:** follow your device, light, dark, or "day and night" (dark after sunset in the selected city). The map recolours with the theme.
 - **Languages:** English, Español, Français, Deutsch, Português and Kiswahili. This covers dates, weather descriptions, alerts, the briefing and city search results.
 - **Sidebar:** a slim icon rail, or a wider sidebar with labels.
@@ -105,6 +106,7 @@ All data is live, and the app needs **no API keys, accounts or server**.
 | `/` | Jump to the city search |
 | `↑` `↓` then `Enter` | Move through and pick search or palette results |
 | `←` `→` | Read the hourly and comparison charts hour by hour or day by day |
+| `Page Up` / `Page Down` | Turn the calendar page |
 | `Esc` | Close a panel, menu or the palette |
 
 ## Tech stack
