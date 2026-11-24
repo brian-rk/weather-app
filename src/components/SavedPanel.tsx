@@ -34,8 +34,6 @@ export function SavedPanel({ open, onClose, side, saved, current, units, onOpenP
     // Re-fetch only when the set of cities or units changes, not on reorder.
   }, [open, ids, units]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!open) return null
-
   const isSaved = saved.some((p) => p.id === current.id)
   const full = saved.length >= MAX_SAVED
 

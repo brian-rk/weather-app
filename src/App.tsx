@@ -155,6 +155,8 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null)
   const [panel, setPanel] = useState<Panel>(null)
   const [day, setDay] = useState(0)
+  // How the cards animate when their content changes: blur for a new city, flip for a new day.
+  const [swapKind, setSwapKind] = useState<'city' | 'day'>('city')
   const [bellRing, setBellRing] = useState(0)
   const [greeting] = useState(greetingFor)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -275,6 +277,7 @@ export default function App() {
   // A new city always starts on today.
   const select = useCallback(
     (next: Place) => {
+      setSwapKind('city')
       setPlace(next)
       setDay(0)
     },
@@ -294,6 +297,12 @@ export default function App() {
       return null
     })
   }, [alerts, setSeenAlerts])
+
+  /** Show another forecast day; the cards flip over to it. */
+  const changeDay = (d: number) => {
+    setSwapKind('day')
+    setDay(d)
+  }
 
   const toggleMap = () => transition(() => setMapExpanded((v) => !v))
 
@@ -394,7 +403,7 @@ export default function App() {
     { id: 'units', label: units === 'metric' ? t('Switch to °F') : t('Switch to °C'), keywords: 'fahrenheit celsius units', icon: <Thermometer size={18} />, run: () => setPrefs((p) => ({ ...p, temp: p.temp === 'c' ? 'f' : 'c' })) },
     { id: 'theme', label: dark ? t('Switch to light theme') : t('Switch to dark theme'), keywords: 'dark light mode appearance', icon: dark ? <Sun size={18} /> : <Moon size={18} />, run: () => setTheme(dark ? 'light' : 'dark') },
     { id: 'sidebar', label: sidebarOpen ? t('Collapse sidebar') : t('Expand sidebar'), keywords: 'menu', icon: <SidebarSimple size={18} />, run: () => setSidebarOpen((v) => !v) },
-    ...(day > 0 ? [{ id: 'today', label: t('Back to today'), icon: <CalendarBlank size={18} />, run: () => transition(() => setDay(0)) }] : []),
+    ...(day > 0 ? [{ id: 'today', label: t('Back to today'), icon: <CalendarBlank size={18} />, run: () => changeDay(0) }] : []),
     ...LANGUAGES.filter((l) => l.id !== prefs.lang).map((l) => ({
       id: `lang-${l.id}`,
       label: t('Language: {name}', { name: l.label }),
@@ -439,7 +448,7 @@ export default function App() {
           onClose={closePanel}
           forecast={base}
           selected={day}
-          onSelect={(d) => transition(() => setDay(d))}
+          onSelect={(d) => changeDay(d)}
         />
         <AlertsPanel
           open={panel?.id === 'alerts'}
@@ -517,13 +526,13 @@ export default function App() {
               <span>
                 {t('Viewing')} <strong>{shortDate(forecast.current.time.slice(0, 10))}</strong>
               </span>
-              <button type="button" className="btn-ghost btn-ghost--small" onClick={() => transition(() => setDay(0))}>
+              <button type="button" className="btn-ghost btn-ghost--small" onClick={() => changeDay(0)}>
                 {t('Back to today')}
               </button>
             </p>
           )}
 
-          <div className={`grid ${mapExpanded ? 'grid--map' : ''}`} aria-busy={loading}>
+          <div className={`grid ${mapExpanded ? 'grid--map' : ''} swap--${swapKind}`} aria-busy={loading}>
             <div className="area-now">
               {error && !forecast ? (
                 <ErrorCard message={error} onRetry={() => setNonce((n) => n + 1)} />
@@ -599,7 +608,7 @@ export default function App() {
 
             <div className="area-week">
               {base ? (
-                <WeekCard forecast={forecastForDay(base, 0)} selected={day} onSelect={(d) => transition(() => setDay(d))} />
+                <WeekCard forecast={forecastForDay(base, 0)} selected={day} onSelect={(d) => changeDay(d)} />
               ) : (
                 <div className="skeleton skeleton-card" />
               )}

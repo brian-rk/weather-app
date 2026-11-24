@@ -78,7 +78,7 @@ export function WeatherArt({ sky, isDay = true, className, label, still = false 
       </defs>
 
       {hasOrb && isDay && (
-        <g transform={big ? 'translate(110 85) scale(1.25)' : 'translate(138 62)'}>
+        <g className="layer-back" transform={big ? 'translate(110 85) scale(1.25)' : 'translate(138 62)'}>
           <circle r={58} fill={url('glow')} className="art-glow" />
           <g className="art-rays">
             {Array.from({ length: 8 }, (_, i) => (
@@ -102,7 +102,7 @@ export function WeatherArt({ sky, isDay = true, className, label, still = false 
       )}
 
       {hasOrb && !isDay && (
-        <g transform={big ? 'translate(110 85) scale(1.2)' : 'translate(140 60)'}>
+        <g className="layer-back" transform={big ? 'translate(110 85) scale(1.2)' : 'translate(140 60)'}>
           <g className="art-moon">
             <circle r={34} fill={url('moon')} />
             <circle cx={-10} cy={-6} r={6} fill="oklch(0.78 0.04 258 / 0.55)" />
@@ -122,7 +122,7 @@ export function WeatherArt({ sky, isDay = true, className, label, still = false 
 
       {/* Precipitation sits behind the cloud so drops appear from its base. */}
       {(sky === 'rain' || sky === 'drizzle' || sky === 'storm') && (
-        <g className="art-drops">
+        <g className="art-drops layer-front">
           {(sky === 'drizzle' ? [66, 96, 126] : [52, 76, 100, 124, 148]).map((x, i) => (
             <g key={x} className="art-drop" style={delay(i * (sky === 'drizzle' ? 0.45 : 0.22))}>
               <path
@@ -140,7 +140,7 @@ export function WeatherArt({ sky, isDay = true, className, label, still = false 
       )}
 
       {sky === 'snow' && (
-        <g className="art-snow" fill="oklch(0.97 0.01 240)" stroke="oklch(0.72 0.06 245)" strokeWidth={1.5}>
+        <g className="art-snow layer-front" fill="oklch(0.97 0.01 240)" stroke="oklch(0.72 0.06 245)" strokeWidth={1.5}>
           {[
             [58, 128],
             [86, 136],
@@ -156,7 +156,7 @@ export function WeatherArt({ sky, isDay = true, className, label, still = false 
       )}
 
       {hasCloud && (
-        <g className="art-cloud">
+        <g className="art-cloud layer-mid">
           <Cloud fill={url(sky === 'storm' ? 'storm' : 'cloud')} />
           {sky === 'cloudy' && (
             <g className="art-cloud-back">
@@ -170,14 +170,14 @@ export function WeatherArt({ sky, isDay = true, className, label, still = false 
 
       {sky === 'storm' && (
         <path
-          className="art-bolt"
+          className="art-bolt layer-front"
           d="M104 118 L88 146 L102 146 L94 168 L122 136 L108 136 L116 118 Z"
           fill={url('bolt')}
         />
       )}
 
       {sky === 'fog' && (
-        <g stroke="oklch(0.8 0.03 245)" strokeWidth={8} strokeLinecap="round">
+        <g className="layer-front" stroke="oklch(0.8 0.03 245)" strokeWidth={8} strokeLinecap="round">
           <line x1={40} y1={140} x2={150} y2={140} className="art-fog" />
           <line x1={64} y1={158} x2={176} y2={158} className="art-fog art-fog--b" />
         </g>

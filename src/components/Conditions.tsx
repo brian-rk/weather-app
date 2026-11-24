@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { ArrowDownRight, ArrowRight, ArrowUpRight } from '@phosphor-icons/react'
 import { formatClock, formatPressureIn, toKmh, usePrefs, WIND_LABEL } from '../lib/prefs'
 import {
@@ -24,10 +25,8 @@ function Sun({ forecast }: { forecast: Forecast }) {
   const up = now >= rise && now <= set
   const frac = Math.min(Math.max((now - rise) / (set - rise || 1), 0), 1)
 
-  // Half-ellipse from (12,70) to (148,70) peaking at y=14.
-  const angle = Math.PI * (1 - frac)
-  const sx = 80 + 68 * Math.cos(angle)
-  const sy = 70 - 56 * Math.sin(angle)
+  // Where the sun sits on its orbit: 0 at sunrise, 1 at sunset.
+  const pos = up ? frac : now < rise ? 0 : 1
 
   // Change versus yesterday, estimated from today's day-to-day trend.
   const delta = d.daylight.length > 1 ? Math.round((d.daylight[1] - d.daylight[0]) / 60) : 0
@@ -41,18 +40,17 @@ function Sun({ forecast }: { forecast: Forecast }) {
   return (
     <div className="cond">
       <h3>{t('Sun')}</h3>
-      <svg viewBox="0 0 160 82" className="sun-arc" aria-hidden="true">
-        <path d="M12 70 A68 56 0 0 1 148 70" className="sun-track" />
-        {up && (
-          <path
-            d={`M12 70 A68 56 0 0 1 ${sx.toFixed(1)} ${sy.toFixed(1)}`}
-            className="sun-done"
-            pathLength={1}
-          />
-        )}
-        <line x1="4" x2="156" y1="70" y2="70" className="sun-horizon" />
-        <circle cx={up ? sx : now < rise ? 12 : 148} cy={up ? sy : 70} r={7} className={up ? 'sun-dot' : 'sun-dot is-down'} />
-      </svg>
+      {/* The sun's path as a 3D orbit over a horizon disc. */}
+      <div className="orbit-stage" aria-hidden="true">
+        <div className="orbit-scene" style={{ '--target': pos } as CSSProperties}>
+          <div className="orbit-ground" />
+          <div className="orbit-ring" />
+          <div className="orbit-trail" />
+          <div className="orbit-arm">
+            <span className={up ? 'orbit-sun' : 'orbit-sun is-down'} />
+          </div>
+        </div>
+      </div>
       <div className="sun-times">
         <p>
           <small>{t('Sunrise')}</small>

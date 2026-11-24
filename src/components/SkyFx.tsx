@@ -21,6 +21,56 @@ export function SkyFx({ sky, tone }: { sky: Sky; tone: 'light' | 'lime' }) {
       <div className="fx-rain" />
       {sky !== 'drizzle' && <div className="fx-rain fx-rain--far" />}
       {sky === 'storm' && <div className="fx-flash" />}
+      {tone === 'light' && <RainOnGlass count={sky === 'drizzle' ? 16 : sky === 'storm' ? 34 : 26} />}
+    </div>
+  )
+}
+
+/** Small deterministic random so droplets keep their places between renders. */
+function seeded(seed: number) {
+  let x = seed
+  return () => {
+    x = (x * 16807) % 2147483647
+    return (x - 1) / 2147483646
+  }
+}
+
+/**
+ * Droplets beading on the card like rain on a window. Most sit still and
+ * shimmer; a few run down the glass leaving a short trail.
+ */
+function RainOnGlass({ count }: { count: number }) {
+  const rand = seeded(count * 97 + 13)
+  const drops = Array.from({ length: count }, (_, i) => {
+    const size = 4 + rand() * 9
+    const runs = i % 5 === 0
+    return {
+      left: `${rand() * 100}%`,
+      top: `${rand() * (runs ? 55 : 92)}%`,
+      size,
+      runs,
+      delay: rand() * (runs ? 6 : 2.5),
+      dur: runs ? 5 + rand() * 4 : 0,
+    }
+  })
+  return (
+    <div className="fx-glass">
+      {drops.map((d, i) => (
+        <span
+          key={i}
+          className={d.runs ? 'drop drop--run' : 'drop'}
+          style={
+            {
+              left: d.left,
+              top: d.top,
+              width: d.size,
+              height: d.size * 1.15,
+              animationDelay: `${d.delay}s`,
+              '--run': `${d.dur}s`,
+            } as CSSProperties
+          }
+        />
+      ))}
     </div>
   )
 }

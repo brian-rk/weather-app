@@ -1,8 +1,12 @@
+import type { CSSProperties } from 'react'
+
 const DIGITS = '0123456789'
 
 /**
- * Rolls each digit to its new value like a mechanical counter. Columns are
- * keyed from the right so "9" to "10" rolls the ones and adds a tens column.
+ * Each digit sits on a ten-sided drum that rolls in 3D to its value.
+ * Columns are keyed from the right, so 9 to 10 rolls the ones and adds a tens drum.
+ * The rotation comes from a CSS variable so the first appearance can roll in
+ * from zero (via @starting-style) instead of snapping into place.
  */
 export function Odometer({ value, className }: { value: number; className?: string }) {
   const text = String(Math.round(value))
@@ -21,9 +25,13 @@ export function Odometer({ value, className }: { value: number; className?: stri
         }
         return (
           <span key={`d-${fromRight}`} className="odo-col" aria-hidden="true">
-            <span className="odo-reel" style={{ transform: `translateY(${-Number(ch) * 10}%)` }}>
-              {DIGITS.split('').map((d) => (
-                <span key={d}>{d}</span>
+            {/* Invisible digit keeps the column the right width. */}
+            <span className="odo-ghost">0</span>
+            <span className="odo-drum" style={{ '--d': Number(ch), '--delay': `${(fromRight - 1) * 90}ms` } as CSSProperties}>
+              {DIGITS.split('').map((d, k) => (
+                <span key={d} className="odo-face" style={{ '--k': k } as CSSProperties}>
+                  {d}
+                </span>
               ))}
             </span>
           </span>

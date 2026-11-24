@@ -524,3 +524,456 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* =====================================================================
+   3D depth, card flip and odometer drum
+   ===================================================================== */
+
+/* 4. Layered depth: back, middle and front layers move by different amounts. */
+.weather-art .layer-back,
+.weather-art .layer-mid,
+.weather-art .layer-front,
+.now-puffs,
+.scene-bench,
+.scene-case,
+.scene-person,
+.scene-umbrella {
+  transition: translate 600ms var(--ease-out);
+}
+.now .weather-art .layer-back {
+  translate: calc(var(--px, 0) * -12px) calc(var(--py, 0) * -9px);
+}
+.now .weather-art .layer-mid {
+  translate: calc(var(--px, 0) * 10px) calc(var(--py, 0) * 7px);
+}
+.now .weather-art .layer-front {
+  translate: calc(var(--px, 0) * 24px) calc(var(--py, 0) * 18px);
+}
+.now .now-puffs {
+  translate: calc(var(--px, 0) * -18px) calc(var(--py, 0) * -10px);
+}
+.tomorrow .scene-bench {
+  translate: calc(var(--px, 0) * 5px) calc(var(--py, 0) * 3px);
+}
+.tomorrow .scene-case {
+  translate: calc(var(--px, 0) * 9px) calc(var(--py, 0) * 5px);
+}
+.tomorrow .scene-person {
+  translate: calc(var(--px, 0) * 13px) calc(var(--py, 0) * 7px);
+}
+/* The umbrella stays in the traveller's hand, so it shares their layer. */
+.tomorrow .scene-umbrella {
+  translate: calc(var(--px, 0) * 13px) calc(var(--py, 0) * 7px);
+}
+
+/* 5. Day change: cards flip over to the new day in a staggered wave. */
+.swap--day .swap {
+  transform-origin: 50% 50%;
+  animation: card-flip 760ms cubic-bezier(0.2, 0.8, 0.25, 1) both;
+}
+.swap--day .area-day .swap {
+  animation-delay: 70ms;
+}
+.swap--day .area-tomorrow .swap {
+  animation-delay: 140ms;
+}
+.swap--day .area-hourly .swap {
+  animation-delay: 210ms;
+}
+.swap--day .area-cond .swap {
+  animation-delay: 280ms;
+}
+@keyframes card-flip {
+  0% {
+    opacity: 0;
+    transform: perspective(1400px) rotateY(-78deg) scale(0.96);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    transform: perspective(1400px) rotateY(0) scale(1);
+  }
+}
+
+/* 6. Odometer: each digit is a ten-sided drum. Faces sit on a 1.539em radius
+   (the apothem of a decagon with 1em sides); the drum is pushed back by the
+   same amount so the front face stays at normal size. */
+.odo-col {
+  position: relative;
+  perspective: 5em;
+}
+.odo-ghost {
+  display: block;
+  visibility: hidden;
+  line-height: 1;
+}
+.odo-drum {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(-1.539em) rotateX(calc(var(--d, 0) * 36deg));
+  transition: transform 1400ms cubic-bezier(0.16, 1, 0.3, 1) var(--delay, 0ms);
+}
+@starting-style {
+  .odo-drum {
+    transform: translateZ(-1.539em) rotateX(0deg);
+  }
+}
+.odo-face {
+  position: absolute;
+  inset: 0;
+  display: block;
+  line-height: 1;
+  text-align: center;
+  backface-visibility: hidden;
+  transform: rotateX(calc(var(--k) * -36deg)) translateZ(1.539em);
+}
+
+/* ------------------------------------------------- 7. Rain on glass */
+.fx-glass {
+  position: absolute;
+  inset: 0;
+}
+.drop {
+  position: absolute;
+  border-radius: 50% 50% 48% 48% / 55% 55% 45% 45%;
+  /* Highlight top-left, darker rim bottom-right: reads as a lens of water. */
+  background:
+    radial-gradient(circle at 32% 28%, oklch(1 0 0 / 0.85) 0 12%, transparent 26%),
+    radial-gradient(circle at 50% 60%, oklch(1 0 0 / 0.08), oklch(1 0 0 / 0.22) 70%, oklch(0.3 0.04 250 / 0.25) 100%);
+  box-shadow:
+    inset -1px -1.5px 1px oklch(0.2 0.04 250 / 0.25),
+    0 1px 2px oklch(0.2 0.04 250 / 0.2);
+  animation: drop-bead 900ms var(--ease-out) both;
+}
+.drop--run {
+  animation:
+    drop-bead 700ms var(--ease-out) both,
+    drop-run var(--run, 6s) cubic-bezier(0.55, 0, 0.85, 0.6) infinite;
+}
+.drop--run::after {
+  /* Thin wet trail left behind the running drop. */
+  content: '';
+  position: absolute;
+  left: 35%;
+  bottom: 70%;
+  width: 30%;
+  height: 46px;
+  border-radius: 2px;
+  background: linear-gradient(to top, oklch(1 0 0 / 0.22), transparent);
+}
+@keyframes drop-bead {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+@keyframes drop-run {
+  0%,
+  35% {
+    translate: 0 0;
+  }
+  100% {
+    translate: 2px 340px;
+  }
+}
+
+/* ------------------------------------------------- 8. 3D week bars */
+.week .section-head {
+  flex-wrap: nowrap;
+}
+.week-view-btn[aria-pressed='true'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.w3d-stage {
+  position: relative;
+  height: 290px;
+  margin-top: 8px;
+  perspective: 900px;
+  perspective-origin: 50% 30%;
+  cursor: grab;
+  touch-action: none;
+  border-radius: 14px;
+  user-select: none;
+}
+.w3d-stage:active {
+  cursor: grabbing;
+}
+.w3d-scene {
+  position: absolute;
+  left: 50%;
+  bottom: 62px;
+  width: calc(7 * 40px);
+  height: 170px;
+  transform-style: preserve-3d;
+  transform: translateX(-50%) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 220ms var(--ease-out);
+}
+.w3d-floor {
+  position: absolute;
+  left: -16px;
+  right: -16px;
+  bottom: -40px;
+  height: 80px;
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 40px),
+    color-mix(in oklch, var(--surface-3) 70%, transparent);
+  transform: rotateX(90deg);
+}
+.w3d-col {
+  position: absolute;
+  left: calc(var(--i) * 40px + 9px);
+  bottom: var(--b);
+  width: 22px;
+  height: var(--h);
+  padding: 0;
+  border: 0;
+  background: none;
+  transform-style: preserve-3d;
+  transform-origin: 50% 100%;
+  animation: w3d-grow 700ms var(--ease-out) both;
+  animation-delay: calc(var(--i) * 70ms);
+  cursor: pointer;
+}
+@keyframes w3d-grow {
+  from {
+    transform: scaleY(0.02);
+  }
+}
+.w3d-box {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+.w3d-box .f {
+  position: absolute;
+  display: block;
+  backface-visibility: hidden;
+}
+/* Faces of a 22 x var(--h) x 22 box. */
+.f-front,
+.f-back {
+  inset: 0;
+  background: linear-gradient(to top, oklch(0.72 0.1 230), oklch(0.8 0.14 85) 60%, var(--accent));
+}
+.f-front {
+  transform: translateZ(11px);
+}
+.f-back {
+  transform: rotateY(180deg) translateZ(11px);
+}
+.f-left,
+.f-right {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 22px;
+  background: linear-gradient(to top, oklch(0.6 0.1 232), oklch(0.68 0.13 80) 60%, oklch(0.6 0.16 45));
+}
+.f-right {
+  transform: rotateY(90deg) translateZ(11px);
+}
+.f-left {
+  transform: rotateY(-90deg) translateZ(11px);
+}
+.f-top,
+.f-bottom {
+  left: 0;
+  width: 22px;
+  height: 22px;
+}
+.f-top {
+  top: -11px;
+  background: oklch(0.86 0.12 60);
+  transform: rotateX(90deg);
+}
+.f-bottom {
+  bottom: -11px;
+  background: oklch(0.6 0.08 232);
+  transform: rotateX(-90deg);
+}
+.w3d-col:hover .f-front,
+.w3d-col:focus-visible .f-front,
+.w3d-col.is-selected .f-front {
+  filter: brightness(1.08) saturate(1.15);
+}
+.w3d-col.is-selected .f-top {
+  background: var(--accent);
+}
+.w3d-max,
+.w3d-min,
+.w3d-day {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.w3d-max {
+  bottom: calc(100% + 16px);
+  font-weight: 650;
+  color: var(--ink);
+}
+.w3d-min {
+  top: calc(100% + 14px);
+  color: var(--ink-3);
+}
+.w3d-day {
+  /* Day labels sit on the floor line, below the coldest column. */
+  top: calc(100% + var(--b) + 34px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.w3d-day svg {
+  color: oklch(0.58 0.08 240);
+}
+
+/* ------------------------------------------------- 9. Sun orbit */
+@property --frac {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+.orbit-stage {
+  position: relative;
+  height: 92px;
+  display: flex;
+  justify-content: center;
+  perspective: 520px;
+  perspective-origin: 50% 20%;
+}
+.orbit-scene {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin-top: 8px;
+  transform-style: preserve-3d;
+  transform: rotateX(-14deg) rotateY(-24deg);
+  transition:
+    transform 900ms var(--ease-out),
+    --frac 1800ms cubic-bezier(0.22, 1, 0.36, 1);
+  --frac: var(--target, 0);
+}
+@starting-style {
+  .orbit-scene {
+    --frac: 0;
+  }
+}
+.cond:hover .orbit-scene {
+  transform: rotateX(-26deg) rotateY(20deg);
+}
+.orbit-ground {
+  position: absolute;
+  top: 50%;
+  left: -24px;
+  right: -24px;
+  height: 130px;
+  margin-top: -65px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--surface-3) 90%, transparent) 60%, transparent);
+  border: 1px solid var(--line);
+  transform: rotateX(90deg);
+}
+.orbit-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px dashed var(--line);
+}
+.orbit-trail {
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  background: conic-gradient(from -90deg, var(--accent) calc(var(--frac) * 180deg), transparent 0);
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2.5px));
+}
+.orbit-arm {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateZ(calc(var(--frac) * 180deg));
+}
+.orbit-sun {
+  position: absolute;
+  left: -9px;
+  top: calc(50% - 9px);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, oklch(0.96 0.1 95), var(--accent) 72%);
+  box-shadow: 0 0 16px 5px oklch(0.85 0.15 80 / 0.55);
+  /* Counter-rotate so the sun keeps its highlight upright. */
+  transform: rotateZ(calc(var(--frac) * -180deg));
+}
+.orbit-sun.is-down {
+  background: radial-gradient(circle at 35% 35%, oklch(0.85 0.02 260), var(--ink-3) 75%);
+  box-shadow: none;
+}
+
+/* ------------------------------------------------- 10. Swinging panels */
+.sheet {
+  backface-visibility: hidden;
+}
+.sheet--left {
+  transform-origin: 0 50%;
+  animation: door-left 420ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.sheet--right {
+  transform-origin: 100% 50%;
+  animation: door-right 420ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.sheet.is-closing {
+  pointer-events: none;
+  animation-duration: 260ms;
+  animation-direction: reverse;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.4);
+}
+@keyframes door-left {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) rotateY(-72deg);
+  }
+  45% {
+    opacity: 1;
+  }
+}
+@keyframes door-right {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) rotateY(72deg);
+  }
+  45% {
+    opacity: 1;
+  }
+}
+@keyframes door-up {
+  from {
+    opacity: 0;
+    transform: perspective(1200px) rotateX(-60deg);
+  }
+  45% {
+    opacity: 1;
+  }
+}
+@media (max-width: 760px) {
+  .sheet--left,
+  .sheet--right {
+    transform-origin: 50% 100%;
+    animation-name: door-up;
+  }
+}
+
+/* Keep the horizon disc off the sunrise and sunset labels. */
+.orbit-stage {
+  overflow: hidden;
+  height: 96px;
+  margin-bottom: 4px;
+}

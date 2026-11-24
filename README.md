@@ -23,13 +23,13 @@ All data is live, and the app needs **no API keys, accounts or server**.
 
 ### Dashboard
 
-- **Current weather:** temperature (rolling odometer digits), "feels like", visibility and humidity. The card's sky blends between day, grey and night colours, and the illustration tilts toward your pointer.
+- **Current weather:** temperature on 3D rolling drums, like a mechanical counter, "feels like", visibility and humidity. The card's sky blends between day, grey and night colours, and the illustration has layered depth: the sun, clouds and rain shift by different amounts as you move your pointer.
 - **Humidity and air quality:** humidity, the US Air Quality Index with a plain-language label, PM2.5, PM10, ozone, nitrogen dioxide, and pollen where it's available (Europe).
 - **How is the temperature today?** Morning, afternoon, evening and night, for temperature, wind or chance of rain. Each icon's height shows the value, so the row reads like a small chart.
 - **Tomorrow:** the next day's high, low, conditions and chance of rain, with an illustrated traveller on a bench dressed for the weather: an umbrella for rain, sunglasses for sun, a beanie and scarf for cold.
 - **Next 24 hours:** a temperature line with chance-of-rain bars. Hover, or focus it and use the arrow keys, to read any hour.
-- **7-day forecast:** each day's high, low, conditions and rain chance, with a bar showing where that day sits within the week. Click a day to see it across the dashboard.
-- **Today's conditions:** sunrise and sunset with the sun's position, day length compared with yesterday; UV index with protection hours; wind speed, direction and gusts on a compass; pressure trend for the next 3 hours.
+- **7-day forecast:** each day's high, low, conditions and rain chance, with a bar showing where that day sits within the week. Click a day to see it across the dashboard. Switch to the **3D view** to see the week as 3D columns you can tilt by dragging or with the arrow keys.
+- **Today's conditions:** sunrise and sunset, with the sun travelling a 3D orbit over the horizon, day length compared with yesterday; UV index with protection hours; wind speed, direction and gusts on a compass; pressure trend for the next 3 hours.
 - **Quick-compare cities:** your first two saved cities with their highs and lows.
 
 ### Map
@@ -81,12 +81,14 @@ All data is live, and the app needs **no API keys, accounts or server**.
 
 ### Motion and accessibility
 
-- **Weather animations:** rain and drizzle fall, storms flash, snow drifts, sun rays turn, clouds and fog drift, and gusts sweep across the card when it's windy.
+- **Weather animations:** rain and drizzle fall, storms flash, snow drifts, sun rays turn, clouds and fog drift, and gusts sweep across the card when it's windy. When it's raining, droplets bead on the weather card like rain on a window, and some run down the glass.
 - **Transitions:**
-  - Cards rise in on load, and cross-fade through a soft blur when you change city or day.
+  - Cards rise in on load and cross-fade through a soft blur when you change city.
+  - Picking another day flips the cards over to it in a staggered wave.
+  - The tomorrow scene has layered depth: bench, suitcase and traveller move at different depths with your pointer.
   - The map morphs when expanded, flies in from space on first load, and tilts during city changes.
   - A theme change spreads out in a circle from where you clicked.
-  - Panels slide in, and the bell swings for new alerts.
+  - Panels swing open from their edge like a door, and swing shut when closed. The bell swings for new alerts.
 - **Reduced motion:** all animation switches off when the system asks for it. The wind layer then shows static direction arrows.
 - **Accessibility:**
   - Keyboard support throughout, including charts.

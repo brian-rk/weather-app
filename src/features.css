@@ -1298,3 +1298,24 @@
     grid-row: 2 / 3;
   }
 }
+
+/* ---- Sidebar centring fix: in the collapsed rail the hidden labels must
+   take no space, otherwise the flex gap pushes each icon off-centre. */
+.sidebar:not(.is-expanded) .side-label,
+.sidebar:not(.is-expanded) .brand-name {
+  display: none;
+}
+.sidebar:not(.is-expanded) .side-btn {
+  gap: 0;
+  padding: 0;
+}
+.sidebar:not(.is-expanded) .brand {
+  justify-content: center;
+  gap: 0;
+}
+@starting-style {
+  .is-expanded .side-label,
+  .is-expanded .brand-name {
+    opacity: 0;
+  }
+}

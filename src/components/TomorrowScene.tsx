@@ -29,6 +29,7 @@ export function TomorrowScene({ outfit, className }: { outfit: Outfit; className
       )}
 
       {/* Bench */}
+      <g className="scene-bench">
       <rect x="40" y="114" width="118" height="9" rx="4" fill={BENCH} />
       <rect x="40" y="128" width="118" height="9" rx="4" fill={BENCH} />
       <rect x="34" y="152" width="132" height="10" rx="4" fill={BENCH} />
@@ -36,6 +37,7 @@ export function TomorrowScene({ outfit, className }: { outfit: Outfit; className
       <rect x="146" y="160" width="8" height="40" rx="3" fill={BENCH} />
       <rect x="50" y="114" width="6" height="40" rx="3" fill={BENCH} />
       <rect x="142" y="114" width="6" height="40" rx="3" fill={BENCH} />
+      </g>
 
       {/* Suitcase */}
       <g className="scene-case">

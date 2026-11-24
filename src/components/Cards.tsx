@@ -31,10 +31,15 @@ function tilt(e: PointerEvent<HTMLElement>) {
   const y = (e.clientY - r.top) / r.height - 0.5
   e.currentTarget.style.setProperty('--tilt-x', `${(-y * 10).toFixed(2)}deg`)
   e.currentTarget.style.setProperty('--tilt-y', `${(x * 14).toFixed(2)}deg`)
+  // Layer offsets for the parallax depth (-0.5 to 0.5).
+  e.currentTarget.style.setProperty('--px', x.toFixed(3))
+  e.currentTarget.style.setProperty('--py', y.toFixed(3))
 }
 function untilt(e: PointerEvent<HTMLElement>) {
   e.currentTarget.style.setProperty('--tilt-x', '0deg')
   e.currentTarget.style.setProperty('--tilt-y', '0deg')
+  e.currentTarget.style.setProperty('--px', '0')
+  e.currentTarget.style.setProperty('--py', '0')
 }
 
 export function NowCard({
@@ -274,7 +279,12 @@ export function TomorrowCard({ place, forecast, units }: { place: Place; forecas
   const future = (forecast.view?.day ?? 0) > 0
   const outfit = outfitFor(cond.sky, toCelsius(d.max[1], units))
   return (
-    <section className={`card tomorrow ${wet ? 'tomorrow--wet' : 'tomorrow--dry'}`} aria-labelledby="tomorrow-title">
+    <section
+      className={`card tomorrow ${wet ? 'tomorrow--wet' : 'tomorrow--dry'}`}
+      aria-labelledby="tomorrow-title"
+      onPointerMove={tilt}
+      onPointerLeave={untilt}
+    >
       <SkyFx sky={cond.sky} tone="lime" />
       <div className="tomorrow-head">
         <p className="muted">{future ? t('Next day, {day}', { day: weekday(d.time[1]) }) : t('Tomorrow, {day}', { day: weekday(d.time[1]) })}</p>
