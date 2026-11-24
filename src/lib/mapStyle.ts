@@ -1,4 +1,4 @@
-import type { Map, StyleSpecification } from 'maplibre-gl'
+import type { Map, SkySpecification, StyleSpecification } from 'maplibre-gl'
 
 /**
  * Two-tone map in the spirit of the reference design: saturated water,
@@ -30,8 +30,47 @@ export const MAP_COLORS_DARK: typeof MAP_COLORS = {
 export const LABEL_LAYERS = ['label-country', 'label-city']
 
 /** Recolour the live map in place (no style reload, so markers and radar stay). */
+/** Atmosphere around the globe and the sky above tilted views. */
+function skyFor(dark: boolean): SkySpecification {
+  return dark
+    ? {
+        'sky-color': '#0b1424',
+        'horizon-color': '#22324a',
+        'fog-color': '#1c222c',
+        'sky-horizon-blend': 0.6,
+        'horizon-fog-blend': 0.6,
+        'fog-ground-blend': 0.4,
+        'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0],
+      }
+    : {
+        'sky-color': '#9fd0f2',
+        'horizon-color': '#e6f2fb',
+        'fog-color': '#eef3f7',
+        'sky-horizon-blend': 0.55,
+        'horizon-fog-blend': 0.6,
+        'fog-ground-blend': 0.35,
+        'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0],
+      }
+}
+
+const RELIEF = {
+  light: { shadow: '#7f93a8', highlight: '#ffffff', accent: '#b9c6d3' },
+  dark: { shadow: '#05080d', highlight: '#3b4a60', accent: '#141a24' },
+}
+
+/** Elevation tiles (Terrarium encoding, free, no key) used for 3D terrain and relief shading. */
+export const DEM_SOURCE = 'dem'
+/** Separate copy for relief shading; MapLibre renders best when terrain and hillshade don't share a source. */
+const DEM_SHADE_SOURCE = 'dem-shade'
+export const RELIEF_LAYER = 'relief'
+
 export function applyMapColors(m: Map, dark: boolean) {
   const c = dark ? MAP_COLORS_DARK : MAP_COLORS
+  const r = dark ? RELIEF.dark : RELIEF.light
+  m.setSky(skyFor(dark))
+  m.setPaintProperty(RELIEF_LAYER, 'hillshade-shadow-color', r.shadow)
+  m.setPaintProperty(RELIEF_LAYER, 'hillshade-highlight-color', r.highlight)
+  m.setPaintProperty(RELIEF_LAYER, 'hillshade-accent-color', r.accent)
   m.setPaintProperty('land', 'background-color', c.land)
   m.setPaintProperty('landcover', 'fill-color', c.landShade)
   m.setPaintProperty('water', 'fill-color', ['interpolate', ['linear'], ['zoom'], 3, c.water, 9, c.waterShallow])
@@ -45,6 +84,9 @@ export function applyMapColors(m: Map, dark: boolean) {
 
 export const mapStyle: StyleSpecification = {
   version: 8,
+  // A real globe when zoomed out; it flattens smoothly as you zoom in.
+  projection: { type: 'globe' },
+  sky: skyFor(false),
   glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
   sources: {
     omt: {
@@ -53,9 +95,36 @@ export const mapStyle: StyleSpecification = {
       attribution:
         '<a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>',
     },
+    [DEM_SOURCE]: {
+      type: 'raster-dem',
+      tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+      encoding: 'terrarium',
+      tileSize: 256,
+      maxzoom: 14,
+      attribution: 'Elevation: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noreferrer">Mapzen Terrain Tiles</a>',
+    },
+    [DEM_SHADE_SOURCE]: {
+      type: 'raster-dem',
+      tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+      encoding: 'terrarium',
+      tileSize: 256,
+      maxzoom: 14,
+    },
   },
   layers: [
     { id: 'land', type: 'background', paint: { 'background-color': MAP_COLORS.land } },
+    {
+      id: RELIEF_LAYER,
+      type: 'hillshade',
+      source: DEM_SHADE_SOURCE,
+      layout: { visibility: 'none' },
+      paint: {
+        'hillshade-exaggeration': 0.55,
+        'hillshade-shadow-color': RELIEF.light.shadow,
+        'hillshade-highlight-color': RELIEF.light.highlight,
+        'hillshade-accent-color': RELIEF.light.accent,
+      },
+    },
     {
       id: 'landcover',
       type: 'fill',

@@ -35,10 +35,13 @@ All data is live, and the app needs **no API keys, accounts or server**.
 ### Map
 
 - A custom two-tone map (blue water, pale land) with a pin on the selected city and live temperatures around it.
+- **3D globe:** the map opens in space and flies in to your city. Zoom out at any time to see the whole planet with its atmosphere.
+- **Cinematic city changes:** the camera tilts and turns as it flies to a new city, then settles.
 - **Layers menu:**
   - **Wind streams:** particles drift with the live wind.
   - **Temperature:** a colour wash with a legend.
   - **Rain radar:** the last two hours, with play and a time slider.
+  - **3D terrain:** mountains rise in relief with shading. The view tilts, and you can right-drag to tilt and turn.
   - **Place names.**
 
   Readings refresh for whatever area you pan to.
@@ -81,7 +84,7 @@ All data is live, and the app needs **no API keys, accounts or server**.
 - **Weather animations:** rain and drizzle fall, storms flash, snow drifts, sun rays turn, clouds and fog drift, and gusts sweep across the card when it's windy.
 - **Transitions:**
   - Cards rise in on load, and cross-fade through a soft blur when you change city or day.
-  - The map morphs when expanded.
+  - The map morphs when expanded, flies in from space on first load, and tilts during city changes.
   - A theme change spreads out in a circle from where you clicked.
   - Panels slide in, and the bell swings for new alerts.
 - **Reduced motion:** all animation switches off when the system asks for it. The wind layer then shows static direction arrows.
@@ -126,6 +129,7 @@ All of these are free and need no API key.
 | Air quality and pollen | [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api) |
 | Map tiles | [OpenFreeMap](https://openfreemap.org) (OpenStreetMap data in the OpenMapTiles format) |
 | Rain radar | [RainViewer](https://www.rainviewer.com/api.html) (past two hours, tiles up to zoom 7) |
+| Elevation for 3D terrain | [Mapzen Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) on AWS Open Data (Terrarium encoding) |
 | Place names for map clicks and "Use my location" | [BigDataCloud](https://www.bigdatacloud.com/free-api/free-reverse-geocode-to-city-api) free client-side reverse geocoding |
 
 ## Getting started
@@ -214,6 +218,7 @@ weather/
 - **Share card:** drawn on a canvas, including the SVG illustrations, then exported as a PNG.
 - **Translations:** English text is the key, so anything untranslated falls back to readable English. Changing language re-renders the app with new strings and locale-aware dates.
 - **Transitions:** city, day and map changes use the browser's View Transitions API where available. Other browsers simply switch without the animation.
+- **Globe and terrain:** the map style uses MapLibre's globe projection with an atmosphere that fades out as you zoom in. 3D terrain and relief shading read from two copies of the same elevation tiles, which renders better than sharing one source.
 - **Faster first load:** the map library is large, so it loads separately and the rest of the dashboard appears first.
 - **Stored in your browser:** everything lives in `localStorage` under keys starting with `nimbus.`:
   - `place` and `saved` for your cities.
@@ -259,6 +264,7 @@ The layout is based on a weather dashboard concept from Dribbble, adapted into a
 - Weather, geocoding and air quality data by [Open-Meteo](https://open-meteo.com) (CC BY 4.0)
 - Map by [OpenFreeMap](https://openfreemap.org), © [OpenMapTiles](https://www.openmaptiles.org), data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright)
 - Rain radar by [RainViewer](https://www.rainviewer.com)
+- Elevation data from [Mapzen Terrain Tiles](https://github.com/tilezen/joerd/blob/master/docs/attribution.md)
 - Reverse geocoding by [BigDataCloud](https://www.bigdatacloud.com)
 - Icons by [Phosphor Icons](https://phosphoricons.com)
 - Font: [Geist](https://vercel.com/font)

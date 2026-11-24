@@ -11,6 +11,8 @@ const ROWS: Row[] = [
   [", feeling like {n}°", ", con sensación de {n}°", ", ressenti {n}°", ", gefühlt {n}°", ", sensação de {n}°", ", inahisi kama {n}°"],
   ["12-hour", "12 horas", "12 heures", "12 Stunden", "12 horas", "Saa 12"],
   ["16-day forecast", "Pronóstico de 16 días", "Prévisions sur 16 jours", "16-Tage-Vorhersage", "Previsão de 16 dias", "Utabiri wa siku 16"],
+  ["3D terrain", "Relieve 3D", "Relief 3D", "3D-Gelände", "Relevo 3D", "Ardhi ya 3D"],
+  ["Drag with the right mouse button to tilt and turn.", "Arrastra con el botón derecho para inclinar y girar.", "Faites glisser avec le bouton droit pour incliner et pivoter.", "Mit der rechten Maustaste ziehen zum Neigen und Drehen.", "Arraste com o botão direito para inclinar e girar.", "Buruta kwa kitufe cha kulia kuinamisha na kuzungusha."],
   ["24-hour", "24 horas", "24 heures", "24 Stunden", "24 horas", "Saa 24"],
   ["7-day forecast", "Pronóstico de 7 días", "Prévisions sur 7 jours", "7-Tage-Vorhersage", "Previsão de 7 dias", "Utabiri wa siku 7"],
   ["About the same as yesterday", "Casi igual que ayer", "À peu près comme hier", "Etwa wie gestern", "Quase igual a ontem", "Karibu sawa na jana"],

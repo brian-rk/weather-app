@@ -508,3 +508,19 @@
     bottom: 20px;
   }
 }
+
+/* 3D terrain hint */
+.wx-hint {
+  max-width: 220px;
+  color: var(--elevated-ink-2);
+  font-weight: 450;
+}
+
+/* Hide the nearby-temperature ring while the globe is zoomed far out. */
+.map-canvas .map-temp-wrap {
+  transition: opacity 300ms var(--ease-out);
+}
+.map-canvas.is-far .map-temp-wrap {
+  opacity: 0;
+  pointer-events: none;
+}

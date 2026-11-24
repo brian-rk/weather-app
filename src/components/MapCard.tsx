@@ -13,6 +13,7 @@ import {
   Thermometer,
   Wind,
   Tag,
+  Mountains,
   Minus,
   Pause,
   Play,
@@ -23,7 +24,7 @@ import { frameLabel, useRadar } from './useRadar'
 import { tempGradient, useWeatherLayers } from './useWeatherLayers'
 import { usePopover } from './usePopover'
 import { WeatherArt } from './WeatherArt'
-import { LABEL_LAYERS, applyMapColors, mapStyle } from '../lib/mapStyle'
+import { DEM_SOURCE, LABEL_LAYERS, RELIEF_LAYER, applyMapColors, mapStyle } from '../lib/mapStyle'
 import {
   describe,
   fetchSnapshots,
@@ -40,6 +41,12 @@ import { t } from '../lib/i18n'
 maplibregl.setWorkerUrl(workerUrl)
 
 const ZOOM = 5
+/** Opening view: the whole globe, before flying in to the city. */
+const INTRO_ZOOM = 1.6
+const TERRAIN_PITCH = 62
+const TERRAIN_BEARING = -20
+
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** Ring of sample points around the selected place. */
 function ring(place: Place) {
@@ -93,6 +100,8 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
   const [radarOn, setRadarOn] = useState(false)
   const [windOn, setWindOn] = useState(false)
   const [tempOn, setTempOn] = useState(false)
+  const [terrainOn, setTerrainOn] = useState(false)
+  const terrainRef = useRef(false)
   const [layersOpen, setLayersOpen] = useState(false)
   const layersBtn = useRef<HTMLButtonElement>(null)
   const layersMenu = usePopover<HTMLDivElement>(layersOpen, () => setLayersOpen(false), layersBtn)
@@ -116,13 +125,18 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
       container: el.current,
       style: mapStyle,
       center: [place.longitude, place.latitude],
-      zoom: ZOOM,
+      // Start from space unless motion is reduced; the place effect flies in.
+      zoom: reducedMotion() ? ZOOM : INTRO_ZOOM,
       scrollZoom: false,
       dragRotate: false,
-      pitchWithRotate: false,
+      maxPitch: 75,
       attributionControl: { compact: true },
     })
     m.touchZoomRotate.disableRotation()
+    // The temperature ring is sized for city zoom; hide it when the whole globe is in view.
+    const updateFar = () => el.current?.classList.toggle('is-far', m.getZoom() < 3.4)
+    m.on('zoom', updateFar)
+    updateFar()
     // Keep credits behind the (i) button so they don't cover the summary card.
     m.once('load', () => {
       setReady(true)
@@ -144,7 +158,19 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
   useEffect(() => {
     const m = map.current
     if (!m) return
-    m.flyTo({ center: [place.longitude, place.latitude], zoom: ZOOM, duration: 700, essential: true })
+    const center: [number, number] = [place.longitude, place.latitude]
+    const rest = terrainRef.current
+      ? { pitch: TERRAIN_PITCH, bearing: TERRAIN_BEARING }
+      : { pitch: 0, bearing: 0 }
+    if (reducedMotion()) {
+      m.jumpTo({ center, zoom: ZOOM, ...rest })
+    } else {
+      // Tilt and turn during the flight, then settle once there.
+      m.flyTo({ center, zoom: ZOOM, pitch: 52, bearing: -24, curve: 1.6, speed: 0.9, essential: true })
+      m.once('moveend', () => {
+        if (map.current === m) m.easeTo({ ...rest, duration: 1400, essential: true })
+      })
+    }
 
     markers.current.forEach((mk) => mk.remove())
     markers.current = [
@@ -239,6 +265,27 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
     }
   }, [ready])
 
+  // 3D terrain: raise the land, shade the relief and tilt the camera.
+  useEffect(() => {
+    const m = map.current
+    terrainRef.current = terrainOn
+    if (!m || !ready) return
+    const quick = reducedMotion()
+    if (terrainOn) {
+      m.setLayoutProperty(RELIEF_LAYER, 'visibility', 'visible')
+      m.setTerrain({ source: DEM_SOURCE, exaggeration: 1.5 })
+      m.dragRotate.enable()
+      m.touchZoomRotate.enableRotation()
+      m.easeTo({ pitch: TERRAIN_PITCH, bearing: TERRAIN_BEARING, duration: quick ? 0 : 1600, essential: true })
+    } else {
+      m.setTerrain(null)
+      m.setLayoutProperty(RELIEF_LAYER, 'visibility', 'none')
+      m.dragRotate.disable()
+      m.touchZoomRotate.disableRotation()
+      m.easeTo({ pitch: 0, bearing: 0, duration: quick ? 0 : 1200, essential: true })
+    }
+  }, [terrainOn, ready])
+
   // Recolour the map with the theme.
   useEffect(() => {
     const m = map.current
@@ -289,7 +336,13 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
           type="button"
           className="map-fab"
           onClick={() =>
-            map.current?.flyTo({ center: [place.longitude, place.latitude], zoom: ZOOM, duration: 500 })
+            map.current?.flyTo({
+              center: [place.longitude, place.latitude],
+              zoom: ZOOM,
+              pitch: terrainOn ? TERRAIN_PITCH : 0,
+              bearing: terrainOn ? TERRAIN_BEARING : 0,
+              duration: reducedMotion() ? 0 : 900,
+            })
           }
         >
           <Crosshair size={18} />
@@ -301,7 +354,7 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
           className="map-fab"
           aria-expanded={layersOpen}
           aria-haspopup="dialog"
-          data-on={labels || radarOn || windOn || tempOn || undefined}
+          data-on={labels || radarOn || windOn || tempOn || terrainOn || undefined}
           onClick={() => setLayersOpen((v) => !v)}
           title={t('Map layers')}
         >
@@ -315,6 +368,7 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
           {[
             { on: windOn, set: setWindOn, icon: Wind, label: t('Wind streams') },
             { on: tempOn, set: setTempOn, icon: Thermometer, label: t('Temperature') },
+            { on: terrainOn, set: setTerrainOn, icon: Mountains, label: t('3D terrain') },
             { on: radarOn, set: setRadarOn, icon: CloudRain, label: t('Rain radar') },
             { on: labels, set: setLabels, icon: Tag, label: t('Place names') },
           ].map(({ on, set, icon: Icon, label }) => (
@@ -328,9 +382,10 @@ export function MapCard({ place, forecast, units, expanded, onToggleExpanded, on
         </div>
       )}
 
-      {(tempOn || windOn) && (
+      {(tempOn || windOn || terrainOn) && (
         <div className="wx-legend" role="status">
-          {wx.loading && !wx.tempRange && <span>{t('Loading live readings')}</span>}
+          {terrainOn && <span className="wx-hint">{t('Drag with the right mouse button to tilt and turn.')}</span>}
+          {(tempOn || windOn) && wx.loading && !wx.tempRange && <span>{t('Loading live readings')}</span>}
           {wx.error && <span>{t("Couldn't load readings for this area.")}</span>}
           {tempOn && wx.tempRange && (
             <span className="wx-temp-legend">
